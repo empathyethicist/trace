@@ -143,6 +143,10 @@ The benchmark workflow can also emit history snapshots such as:
 
 This creates a lightweight baseline history for later regression review.
 
+Governance expectations for benchmark acceptance and release review are defined in:
+
+- `docs/BENCHMARK_GOVERNANCE.md`
+
 ## What is not yet fully validated
 
 The following are still required for stronger production confidence:

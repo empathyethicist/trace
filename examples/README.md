@@ -24,6 +24,7 @@ The benchmark artifacts demonstrate:
 - hosted-profile benchmark summary output
 - JSON and Markdown benchmark artifacts suitable for review or archival
 - detached benchmark artifact manifests, signatures, and trust metadata
+- reproducible verification targets for reviewer spot-checks
 
 The benchmark comparison demonstrates:
 
@@ -37,3 +38,19 @@ The benchmark history demonstrates:
 - a lightweight baseline for benchmark regression tracking
 
 These artifacts are illustrative sample outputs, not live case materials.
+
+## Verification commands
+
+Example verification flow for committed benchmark artifacts:
+
+```bash
+openssl dgst -sha256 -verify \
+  examples/benchmark_artifacts/heuristic/bench_signer_public.pem \
+  -signature examples/benchmark_artifacts/heuristic/artifact_manifest.sig \
+  examples/benchmark_artifacts/heuristic/artifact_manifest.json
+
+openssl dgst -sha256 -verify \
+  examples/benchmark_comparison/bench_signer_public.pem \
+  -signature examples/benchmark_comparison/artifact_manifest.sig \
+  examples/benchmark_comparison/artifact_manifest.json
+```

@@ -220,6 +220,7 @@ TRACE is designed around the following controls:
 - Product intent: `docs/PRODUCT_GOALS.md`
 - Roadmap: `docs/ROADMAP.md`
 - Validation posture: `docs/VALIDATION.md`
+- Benchmark governance: `docs/BENCHMARK_GOVERNANCE.md`
 - Evidence package specification: `docs/EVIDENCE_PACKAGE_SPEC.md`
 - Architecture: `docs/ARCHITECTURE.md`
 - Threat model: `docs/THREAT_MODEL.md`
