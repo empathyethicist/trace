@@ -160,6 +160,14 @@ def write_report_markdown(case_id: str, findings: dict, override_summary: dict, 
         f"- Correlation Pairs Reviewed: `{len(findings['correlation_pairs'])}`\n"
         f"- Crisis Pairs Reviewed: `{len(findings['crisis_pairs'])}`\n"
         "\n## Findings Summary\n\n"
+        "| Metric | Value |\n"
+        "|---|---|\n"
+        f"| Inappropriate Response Rate | `{findings['inappropriate_response_rate']}%` |\n"
+        f"| Crisis Failure Rate | `{findings['crisis_failure_rate']}%` |\n"
+        f"| Pattern Systematic | `{findings['pattern_distribution']['systematic']}` |\n"
+        f"| Concentration Index | `{findings['pattern_distribution']['concentration_index']}` |\n"
+        f"| Harmful Category Distribution | `{category_summary}` |\n"
+        "\n"
         f"- Inappropriate Response Rate: `{findings['inappropriate_response_rate']}%`\n"
         f"- Crisis Failure Rate: `{findings['crisis_failure_rate']}%`\n"
         f"- Pattern Systematic: `{findings['pattern_distribution']['systematic']}`\n"
@@ -189,6 +197,24 @@ def write_report_markdown(case_id: str, findings: dict, override_summary: dict, 
                 f"- Message `{item['message_id']}` ({item['speaker']}): "
                 f"`{item['override_rationale'] or 'No rationale provided'}`\n"
             )
+    lines.append("\n## Appendix A — Artifact Checklist\n\n")
+    lines.append("| Artifact | Purpose |\n|---|---|\n")
+    lines.append("| `manifest.json` | Package metadata and content hash anchors |\n")
+    lines.append("| `verification.json` | Package integrity verification output |\n")
+    lines.append("| `forensic_report.json` | Machine-readable report summary |\n")
+    lines.append("| `forensic_report.pdf` | Portable human-readable report |\n")
+    lines.append("| `override_summary.json` | Examiner review summary |\n")
+    lines.append("\n## Appendix B — Correlation Snapshot\n\n")
+    if findings["correlation_pairs"]:
+        lines.append("| User Message | Vulnerability | System Message | Category | Appropriate |\n")
+        lines.append("|---|---:|---|---|---|\n")
+        for pair in findings["correlation_pairs"][:10]:
+            lines.append(
+                f"| `{pair['user_message_id']}` | `{pair['user_vulnerability']}` | "
+                f"`{pair['system_message_id']}` | `{pair['system_category']}` | `{pair['appropriate']}` |\n"
+            )
+    else:
+        lines.append("- No elevated-vulnerability correlation pairs identified.\n")
     return "".join(lines)
 
 
@@ -242,12 +268,26 @@ def write_report_pdf(path: Path, case_id: str, findings: dict, override_summary:
         "Core artifacts: manifest.json, verification.json, forensic_report.json, forensic_report.pdf",
         "Transcript artifacts: source_transcript.json, classified_transcript.json, classified_transcript.csv",
         "Review artifacts: override_summary.json, irr_statistics.json, audit_log.jsonl",
+        "Appendix A - Artifact Checklist",
+        "manifest.json: package metadata and content hash anchors",
+        "verification.json: package integrity verification output",
+        "forensic_report.json: machine-readable report summary",
+        "forensic_report.pdf: portable human-readable report",
+        "Appendix B - Correlation Snapshot",
     ]
     if examiner_notes.strip():
         report_lines.append("Examiner Notes")
         for paragraph in examiner_notes.strip().splitlines():
             if paragraph.strip():
                 report_lines.append(paragraph.strip())
+    if findings["correlation_pairs"]:
+        for pair in findings["correlation_pairs"][:10]:
+            report_lines.append(
+                f"Pair user#{pair['user_message_id']} vuln {pair['user_vulnerability']} -> "
+                f"system#{pair['system_message_id']} {pair['system_category']} appropriate={pair['appropriate']}"
+            )
+    else:
+        report_lines.append("No elevated-vulnerability correlation pairs identified.")
     for item in override_summary["overridden_messages"]:
         report_lines.append(
             f"Override #{item['message_id']} ({item['speaker']}): {item['override_rationale'] or 'No rationale provided'}"

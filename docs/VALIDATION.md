@@ -17,6 +17,7 @@ TRACE currently validates the following:
 - evidence-package artifact creation
 - evidence-package hash verification
 - detached manifest signature verification
+- signing-certificate verification with optional CRL checks
 - dual-coder IRR computation
 - reference-case agreement using the Companion Incident and benign baseline fixtures
 
@@ -37,6 +38,7 @@ The table below reflects the current repository validation posture on the includ
 | PDF report generation validation | Implemented |
 | Evidence-package hash verification | Implemented |
 | Detached manifest signature verification | Implemented |
+| Signing-certificate verification with CRL option | Implemented |
 
 ## Current automated checks
 
@@ -62,6 +64,7 @@ TRACE ships with:
 - `validation/reference_benign_case.json`
 - `validation/reference_long_case.json`
 - `validation/reference_mixed_case.json`
+- `validation/reference_noisy_case.json`
 - `validation/parsers/`
 
 This fixture provides:
@@ -89,6 +92,12 @@ The mixed fixture provides:
 - a regression check for mixed-pattern findings
 - validation coverage for transitions between baseline and elevated states
 
+The noisy fixture provides:
+
+- informal language, shorthand, and emoji-like conversational noise
+- mixed benign and harmful segments in a less curated style
+- regression coverage for non-ideal but parseable transcript content
+
 The parser fixtures provide:
 
 - court-style transcript samples
@@ -103,6 +112,7 @@ trace validate --reference ./validation/companion_incident.json
 trace validate --reference ./validation/reference_benign_case.json
 trace validate --reference ./validation/reference_long_case.json
 trace validate --reference ./validation/reference_mixed_case.json
+trace validate --reference ./validation/reference_noisy_case.json
 ```
 
 ## What is not yet fully validated

@@ -72,6 +72,7 @@ Stores signing-context metadata including:
 - public key hash
 - optional signing certificate path
 - optional certificate-chain file hashes
+- signer label and verification context used during detached-signature review
 
 ### `verification.json`
 
@@ -159,6 +160,6 @@ The current package format does not yet include:
 
 - authenticated timestamping or external attestation
 - embedded certificate-chain handling for signed manifests
-- certificate revocation or trust-store evaluation
+- trust-store integration beyond explicit CA / CRL inputs
 
 Those are planned future enhancements rather than current guarantees.
