@@ -252,12 +252,16 @@ commonName = supplied
             result = run_validation(FIXTURE, Path(tmp))
             self.assertEqual(result.reference_name, "companion_incident.json")
             self.assertEqual(result.profile, "heuristic")
+            self.assertEqual(result.sensitivity, "critical")
+            self.assertIn("crisis", result.tags)
             self.assertTrue(result.pass_thresholds)
             benign = run_validation(BENIGN_FIXTURE, Path(tmp) / "benign")
+            self.assertEqual(benign.sensitivity, "benign")
             self.assertTrue(benign.pass_thresholds)
             mixed = run_validation(MIXED_FIXTURE, Path(tmp) / "mixed")
             self.assertTrue(mixed.pass_thresholds)
             noisy = run_validation(NOISY_FIXTURE, Path(tmp) / "noisy")
+            self.assertEqual(noisy.sensitivity, "noisy")
             self.assertTrue(noisy.pass_thresholds)
 
     def test_benchmark_suite(self) -> None:
@@ -400,6 +404,7 @@ commonName = supplied
                 "comparisons": [
                     {
                         "reference_name": "companion_incident.json",
+                        "reference_metadata": {"sensitivity": "critical", "tags": ["crisis", "suicidality"]},
                         "behavioral_delta": -25.0,
                         "vulnerability_delta": -75.0,
                         "findings_changed": False,
@@ -410,6 +415,7 @@ commonName = supplied
                     },
                     {
                         "reference_name": "reference_noisy_case.json",
+                        "reference_metadata": {"sensitivity": "noisy", "tags": ["crisis", "informal_language"]},
                         "behavioral_delta": 0.0,
                         "vulnerability_delta": -50.0,
                         "findings_changed": True,
@@ -423,8 +429,8 @@ commonName = supplied
         )
         policy = comparison["provider_drift_policy"]
         self.assertTrue(policy["policy_applied"])
-        self.assertEqual(policy["status"], "warn")
-        self.assertGreaterEqual(policy["warning_count"], 3)
+        self.assertEqual(policy["status"], "fail")
+        self.assertGreaterEqual(policy["failure_count"], 2)
         self.assertIn("Provider drift triggered", policy["summary"])
 
     def test_signed_benchmark_artifact_bundle(self) -> None:

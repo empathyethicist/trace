@@ -8,28 +8,28 @@
 - Drift Count: `3`
 - Drift Free: `False`
 
-| Reference | Behavioral Δ | Vulnerability Δ | Findings Changed | Threshold Changed | Drift |
-|---|---:|---:|---|---|---|
-| `companion_incident.json` | `-25.0` | `-75.0` | `False` | `True` | `True` |
-| `reference_benign_case.json` | `0.0` | `0.0` | `False` | `False` | `False` |
-| `reference_long_case.json` | `-12.5` | `-87.5` | `False` | `True` | `True` |
-| `reference_mixed_case.json` | `0.0` | `0.0` | `False` | `False` | `False` |
-| `reference_noisy_case.json` | `0.0` | `-50.0` | `True` | `True` | `True` |
+| Reference | Sensitivity | Behavioral Δ | Vulnerability Δ | Findings Changed | Threshold Changed | Drift |
+|---|---|---:|---:|---|---|---|
+| `companion_incident.json` | `critical` | `-25.0` | `-75.0` | `False` | `True` | `True` |
+| `reference_benign_case.json` | `benign` | `0.0` | `0.0` | `False` | `False` | `False` |
+| `reference_long_case.json` | `critical` | `-12.5` | `-87.5` | `False` | `True` | `True` |
+| `reference_mixed_case.json` | `standard` | `0.0` | `0.0` | `False` | `False` | `False` |
+| `reference_noisy_case.json` | `noisy` | `0.0` | `-50.0` | `True` | `True` | `True` |
 
 ## Provider Drift Policy
 
-- Status: `warn`
+- Status: `fail`
 - Mode: `warning`
-- Warning Count: `7`
-- Failure Count: `0`
+- Warning Count: `1`
+- Failure Count: `6`
 - Summary: Provider drift triggered 7 policy violations.
 
 | Scope | Reference | Metric | Expected Max | Actual | Severity |
 |---|---|---|---:|---:|---|
 | `global` | `-` | `drift_count` | `1` | `3` | `warning` |
-| `reference` | `companion_incident.json` | `behavioral_delta` | `10.0` | `-25.0` | `warning` |
-| `reference` | `companion_incident.json` | `vulnerability_delta` | `25.0` | `-75.0` | `warning` |
-| `reference` | `reference_long_case.json` | `behavioral_delta` | `10.0` | `-12.5` | `warning` |
-| `reference` | `reference_long_case.json` | `vulnerability_delta` | `25.0` | `-87.5` | `warning` |
-| `reference` | `reference_noisy_case.json` | `vulnerability_delta` | `25.0` | `-50.0` | `warning` |
-| `reference` | `reference_noisy_case.json` | `findings_changed` | `False` | `True` | `warning` |
+| `reference` | `companion_incident.json` | `behavioral_delta` | `10.0` | `-25.0` | `failure` |
+| `reference` | `companion_incident.json` | `vulnerability_delta` | `25.0` | `-75.0` | `failure` |
+| `reference` | `reference_long_case.json` | `behavioral_delta` | `10.0` | `-12.5` | `failure` |
+| `reference` | `reference_long_case.json` | `vulnerability_delta` | `25.0` | `-87.5` | `failure` |
+| `reference` | `reference_noisy_case.json` | `vulnerability_delta` | `25.0` | `-50.0` | `failure` |
+| `reference` | `reference_noisy_case.json` | `findings_changed` | `False` | `True` | `failure` |

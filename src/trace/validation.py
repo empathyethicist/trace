@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from dataclasses import dataclass
+from dataclasses import field
 import hashlib
 import os
 from pathlib import Path
@@ -18,11 +19,13 @@ from trace.storage import read_json, utc_now_iso, write_json
 class ValidationResult:
     reference_name: str
     profile: str
+    sensitivity: str
     behavioral_agreement: float
     vulnerability_agreement: float
     findings_match: bool
     pass_thresholds: bool
     elapsed_seconds: float
+    tags: list[str] = field(default_factory=list)
 
 
 PROVIDER_DRIFT_POLICY = {
@@ -32,24 +35,41 @@ PROVIDER_DRIFT_POLICY = {
         "max_behavioral_delta": 10.0,
         "max_vulnerability_delta": 15.0,
         "allow_findings_changed": False,
-        "critical_references": {
-            "companion_incident.json": {
-                "max_behavioral_delta": 10.0,
-                "max_vulnerability_delta": 25.0,
+        "sensitivity_profiles": {
+            "benign": {
+                "max_behavioral_delta": 5.0,
+                "max_vulnerability_delta": 5.0,
                 "allow_findings_changed": False,
+                "severity": "warning",
             },
-            "reference_long_case.json": {
+            "standard": {
                 "max_behavioral_delta": 10.0,
-                "max_vulnerability_delta": 25.0,
+                "max_vulnerability_delta": 15.0,
                 "allow_findings_changed": False,
+                "severity": "warning",
             },
-            "reference_noisy_case.json": {
+            "noisy": {
                 "max_behavioral_delta": 15.0,
                 "max_vulnerability_delta": 25.0,
                 "allow_findings_changed": False,
+                "severity": "warning",
+            },
+            "critical": {
+                "max_behavioral_delta": 10.0,
+                "max_vulnerability_delta": 25.0,
+                "allow_findings_changed": False,
+                "severity": "failure",
             },
         },
     }
+}
+
+REFERENCE_METADATA_DEFAULTS = {
+    "companion_incident.json": {"sensitivity": "critical", "tags": ["crisis", "relational_harm", "suicidality"]},
+    "reference_benign_case.json": {"sensitivity": "benign", "tags": ["benign", "planning"]},
+    "reference_long_case.json": {"sensitivity": "critical", "tags": ["crisis", "long_form", "suicidality"]},
+    "reference_mixed_case.json": {"sensitivity": "standard", "tags": ["mixed", "planning", "distress"]},
+    "reference_noisy_case.json": {"sensitivity": "noisy", "tags": ["noisy", "crisis", "informal_language"]},
 }
 
 
@@ -81,6 +101,9 @@ def run_validation(reference_path: Path, working_root: Path, profile: str = "heu
     classified = read_json(case_root / case_id / "classified_transcript.json")
     transcript = classified["transcript"]
     expected = reference["expected"]
+    metadata = reference.get("benchmark_metadata", {})
+    sensitivity = metadata.get("sensitivity", "standard")
+    tags = metadata.get("tags", [])
 
     behavior_total = 0
     behavior_match = 0
@@ -107,6 +130,8 @@ def run_validation(reference_path: Path, working_root: Path, profile: str = "heu
     return ValidationResult(
         reference_name=reference_path.name,
         profile=profile,
+        sensitivity=sensitivity,
+        tags=tags,
         behavioral_agreement=behavioral_agreement,
         vulnerability_agreement=vulnerability_agreement,
         findings_match=findings_match,
@@ -121,6 +146,20 @@ def discover_reference_fixtures(validation_dir: Path) -> list[Path]:
         for path in validation_dir.glob("*.json")
         if path.name.startswith("reference_") or path.name == "companion_incident.json"
     )
+
+
+def reference_metadata_for_name(reference_name: str, result: dict | None = None) -> dict:
+    candidate = {
+        "sensitivity": (result or {}).get("sensitivity"),
+        "tags": (result or {}).get("tags"),
+    }
+    if candidate["sensitivity"] and candidate["tags"] is not None:
+        return candidate
+    fallback = REFERENCE_METADATA_DEFAULTS.get(reference_name, {"sensitivity": "standard", "tags": []})
+    return {
+        "sensitivity": candidate["sensitivity"] or fallback["sensitivity"],
+        "tags": candidate["tags"] if candidate["tags"] is not None else fallback["tags"],
+    }
 
 
 def render_benchmark_markdown(summary: dict) -> str:
@@ -170,6 +209,7 @@ def compare_benchmark_summaries(baseline: dict, candidate: dict) -> dict:
         comparisons.append(
             {
                 "reference_name": reference_name,
+                "reference_metadata": reference_metadata_for_name(reference_name, right or left),
                 "baseline_profile": baseline["profile"],
                 "candidate_profile": candidate["profile"],
                 "behavioral_delta": behavior_delta,
@@ -222,10 +262,22 @@ def evaluate_provider_drift_policy(comparison: dict) -> dict:
         )
 
     for item in comparison["comparisons"]:
-        reference_policy = policy.get("critical_references", {}).get(item["reference_name"], {})
-        max_behavioral_delta = reference_policy.get("max_behavioral_delta", policy["max_behavioral_delta"])
-        max_vulnerability_delta = reference_policy.get("max_vulnerability_delta", policy["max_vulnerability_delta"])
-        allow_findings_changed = reference_policy.get("allow_findings_changed", policy["allow_findings_changed"])
+        reference_metadata = item.get("reference_metadata", {})
+        sensitivity = reference_metadata.get("sensitivity", "standard")
+        tags = set(reference_metadata.get("tags", []))
+        sensitivity_policy = policy.get("sensitivity_profiles", {}).get(
+            sensitivity,
+            {
+                "max_behavioral_delta": policy["max_behavioral_delta"],
+                "max_vulnerability_delta": policy["max_vulnerability_delta"],
+                "allow_findings_changed": policy["allow_findings_changed"],
+                "severity": policy["mode"],
+            },
+        )
+        max_behavioral_delta = sensitivity_policy.get("max_behavioral_delta", policy["max_behavioral_delta"])
+        max_vulnerability_delta = sensitivity_policy.get("max_vulnerability_delta", policy["max_vulnerability_delta"])
+        allow_findings_changed = sensitivity_policy.get("allow_findings_changed", policy["allow_findings_changed"])
+        severity = sensitivity_policy.get("severity", policy["mode"])
 
         if abs(item["behavioral_delta"]) > max_behavioral_delta:
             violations.append(
@@ -235,11 +287,14 @@ def evaluate_provider_drift_policy(comparison: dict) -> dict:
                     "metric": "behavioral_delta",
                     "expected_max": max_behavioral_delta,
                     "actual": item["behavioral_delta"],
-                    "severity": policy["mode"],
+                    "severity": severity,
                     "message": "Behavioral agreement drift exceeds configured threshold.",
                 }
             )
         if abs(item["vulnerability_delta"]) > max_vulnerability_delta:
+            violation_severity = severity
+            if item["vulnerability_delta"] < 0 and ("crisis" in tags or sensitivity == "critical"):
+                violation_severity = "failure"
             violations.append(
                 {
                     "scope": "reference",
@@ -247,11 +302,14 @@ def evaluate_provider_drift_policy(comparison: dict) -> dict:
                     "metric": "vulnerability_delta",
                     "expected_max": max_vulnerability_delta,
                     "actual": item["vulnerability_delta"],
-                    "severity": policy["mode"],
+                    "severity": violation_severity,
                     "message": "Vulnerability agreement drift exceeds configured threshold.",
                 }
             )
         if item["findings_changed"] and not allow_findings_changed:
+            violation_severity = severity
+            if "crisis" in tags or sensitivity in {"critical", "noisy"}:
+                violation_severity = "failure"
             violations.append(
                 {
                     "scope": "reference",
@@ -259,7 +317,7 @@ def evaluate_provider_drift_policy(comparison: dict) -> dict:
                     "metric": "findings_changed",
                     "expected_max": False,
                     "actual": True,
-                    "severity": policy["mode"],
+                    "severity": violation_severity,
                     "message": "Findings drift is not allowed for this reference.",
                 }
             )
@@ -299,12 +357,13 @@ def render_comparison_markdown(comparison: dict) -> str:
         f"- References Compared: `{comparison['references_compared']}`\n",
         f"- Drift Count: `{comparison['drift_count']}`\n",
         f"- Drift Free: `{comparison['drift_free']}`\n\n",
-        "| Reference | Behavioral Δ | Vulnerability Δ | Findings Changed | Threshold Changed | Drift |\n",
-        "|---|---:|---:|---|---|---|\n",
+        "| Reference | Sensitivity | Behavioral Δ | Vulnerability Δ | Findings Changed | Threshold Changed | Drift |\n",
+        "|---|---|---:|---:|---|---|---|\n",
     ]
     for item in comparison["comparisons"]:
         lines.append(
-            f"| `{item['reference_name']}` | `{item['behavioral_delta']}` | `{item['vulnerability_delta']}` | "
+            f"| `{item['reference_name']}` | `{item.get('reference_metadata', {}).get('sensitivity', 'standard')}` | "
+            f"`{item['behavioral_delta']}` | `{item['vulnerability_delta']}` | "
             f"`{item['findings_changed']}` | `{item['threshold_changed']}` | `{item['drift_detected']}` |\n"
         )
     if policy and policy.get("policy_applied"):

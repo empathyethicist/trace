@@ -1,8 +1,8 @@
 {
   "prefix": "benchmark_live-hosted_latest",
   "series_type": "benchmark",
-  "snapshot_count": 2,
-  "latest_generated_at": "2026-04-19T15:28:02+00:00",
+  "snapshot_count": 3,
+  "latest_generated_at": "2026-04-19T15:33:37+00:00",
   "oldest_generated_at": "2026-04-19T15:19:45+00:00",
   "profile": "live-hosted",
   "latest_pass_rate": 40.0,

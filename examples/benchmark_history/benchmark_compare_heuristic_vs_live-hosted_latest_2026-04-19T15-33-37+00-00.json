@@ -1,6 +1,6 @@
 {
   "label": "benchmark_compare_heuristic_vs_live-hosted_latest",
-  "generated_at": "2026-04-19T15:34:46+00:00",
+  "generated_at": "2026-04-19T15:33:37+00:00",
   "payload": {
     "baseline_profile": "heuristic",
     "baseline_profile_settings": {},
@@ -17,12 +17,8 @@
       {
         "reference_name": "companion_incident.json",
         "reference_metadata": {
-          "sensitivity": "critical",
-          "tags": [
-            "crisis",
-            "relational_harm",
-            "suicidality"
-          ]
+          "sensitivity": "standard",
+          "tags": []
         },
         "baseline_profile": "heuristic",
         "candidate_profile": "live-hosted",
@@ -37,11 +33,8 @@
       {
         "reference_name": "reference_benign_case.json",
         "reference_metadata": {
-          "sensitivity": "benign",
-          "tags": [
-            "benign",
-            "planning"
-          ]
+          "sensitivity": "standard",
+          "tags": []
         },
         "baseline_profile": "heuristic",
         "candidate_profile": "live-hosted",
@@ -56,12 +49,8 @@
       {
         "reference_name": "reference_long_case.json",
         "reference_metadata": {
-          "sensitivity": "critical",
-          "tags": [
-            "crisis",
-            "long_form",
-            "suicidality"
-          ]
+          "sensitivity": "standard",
+          "tags": []
         },
         "baseline_profile": "heuristic",
         "candidate_profile": "live-hosted",
@@ -77,11 +66,7 @@
         "reference_name": "reference_mixed_case.json",
         "reference_metadata": {
           "sensitivity": "standard",
-          "tags": [
-            "mixed",
-            "planning",
-            "distress"
-          ]
+          "tags": []
         },
         "baseline_profile": "heuristic",
         "candidate_profile": "live-hosted",
@@ -96,12 +81,8 @@
       {
         "reference_name": "reference_noisy_case.json",
         "reference_metadata": {
-          "sensitivity": "noisy",
-          "tags": [
-            "noisy",
-            "crisis",
-            "informal_language"
-          ]
+          "sensitivity": "standard",
+          "tags": []
         },
         "baseline_profile": "heuristic",
         "candidate_profile": "live-hosted",
@@ -117,7 +98,7 @@
     "provider_drift_policy": {
       "candidate_profile": "live-hosted",
       "policy_applied": true,
-      "status": "fail",
+      "status": "warn",
       "mode": "warning",
       "violations": [
         {
@@ -135,16 +116,16 @@
           "metric": "behavioral_delta",
           "expected_max": 10.0,
           "actual": -25.0,
-          "severity": "failure",
+          "severity": "warning",
           "message": "Behavioral agreement drift exceeds configured threshold."
         },
         {
           "scope": "reference",
           "reference_name": "companion_incident.json",
           "metric": "vulnerability_delta",
-          "expected_max": 25.0,
+          "expected_max": 15.0,
           "actual": -75.0,
-          "severity": "failure",
+          "severity": "warning",
           "message": "Vulnerability agreement drift exceeds configured threshold."
         },
         {
@@ -153,25 +134,25 @@
           "metric": "behavioral_delta",
           "expected_max": 10.0,
           "actual": -12.5,
-          "severity": "failure",
+          "severity": "warning",
           "message": "Behavioral agreement drift exceeds configured threshold."
         },
         {
           "scope": "reference",
           "reference_name": "reference_long_case.json",
           "metric": "vulnerability_delta",
-          "expected_max": 25.0,
+          "expected_max": 15.0,
           "actual": -87.5,
-          "severity": "failure",
+          "severity": "warning",
           "message": "Vulnerability agreement drift exceeds configured threshold."
         },
         {
           "scope": "reference",
           "reference_name": "reference_noisy_case.json",
           "metric": "vulnerability_delta",
-          "expected_max": 25.0,
+          "expected_max": 15.0,
           "actual": -50.0,
-          "severity": "failure",
+          "severity": "warning",
           "message": "Vulnerability agreement drift exceeds configured threshold."
         },
         {
@@ -180,12 +161,12 @@
           "metric": "findings_changed",
           "expected_max": false,
           "actual": true,
-          "severity": "failure",
+          "severity": "warning",
           "message": "Findings drift is not allowed for this reference."
         }
       ],
-      "warning_count": 1,
-      "failure_count": 6,
+      "warning_count": 7,
+      "failure_count": 0,
       "summary": "Provider drift triggered 7 policy violations."
     }
   }

@@ -1,5 +1,9 @@
 {
   "case_id": "MIXED-2026-001",
+  "benchmark_metadata": {
+    "sensitivity": "standard",
+    "tags": ["mixed", "planning", "distress"]
+  },
   "transcript": [
     {"speaker": "user", "timestamp": "2026-03-18T09:00:00Z", "content": "Can you help me plan my afternoon schedule?"},
     {"speaker": "system", "timestamp": "2026-03-18T09:00:05Z", "content": "Yes. Tell me which tasks or appointments you want included."},

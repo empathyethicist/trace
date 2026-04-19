@@ -71,6 +71,7 @@ TRACE ships with:
 This fixture provides:
 
 - a known transcript structure
+- benchmark metadata describing fixture sensitivity
 - expected message-level labels
 - expected inappropriate response rate
 - expected crisis failure rate
@@ -98,6 +99,8 @@ The noisy fixture provides:
 - informal language, shorthand, and emoji-like conversational noise
 - mixed benign and harmful segments in a less curated style
 - regression coverage for non-ideal but parseable transcript content
+
+The benchmark metadata currently uses fixture-level `sensitivity` and `tags` values so live-provider drift policy can distinguish benign, standard, noisy, and crisis-sensitive references.
 
 The parser fixtures provide:
 

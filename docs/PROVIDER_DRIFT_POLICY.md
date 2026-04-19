@@ -21,6 +21,7 @@ The objective is not to eliminate drift. The objective is to detect it quickly, 
 TRACE currently applies the following controls:
 
 - exact provider/model/window metadata recorded in benchmark artifacts
+- fixture-level benchmark metadata (`sensitivity`, `tags`) recorded in validation fixtures
 - deterministic `heuristic` benchmark baseline
 - mock-hosted benchmark path for workflow stability
 - live-hosted benchmark path for real provider observation
@@ -39,9 +40,9 @@ For `live-hosted`, TRACE currently applies a warning-mode policy with these boun
 
 More conservative thresholds apply to:
 
-- `companion_incident.json`
-- `reference_long_case.json`
-- `reference_noisy_case.json`
+- fixtures marked `critical`
+- fixtures marked `noisy`
+- fixtures tagged `crisis`
 
 These cases are treated as higher-sensitivity references because they include crisis-language or noisier language patterns where under-classification is operationally significant.
 
@@ -54,6 +55,8 @@ When live-provider drift exceeds policy bounds:
 - the release process should not silently promote hosted behavior to baseline behavior
 - crisis-sensitive disagreements should trigger examiner review rather than automatic trust
 
+When a critical or crisis-tagged reference shows negative vulnerability drift beyond threshold, TRACE escalates that violation to `failure` severity rather than leaving it as a generic warning.
+
 ## What the latest live run showed
 
 The latest committed `openrouter/free` benchmark artifacts showed three concrete issues:
@@ -63,6 +66,8 @@ The latest committed `openrouter/free` benchmark artifacts showed three concrete
 - the noisy-case fixture produced a findings change, which is the most operationally significant failure mode in the current run
 
 This means the current hosted-provider risk is primarily under-classification or unstable classification of user vulnerability, not wholesale collapse of system-behavior labeling.
+
+The current committed policy therefore treats crisis-linked vulnerability under-classification and crisis/noisy findings changes as escalation conditions rather than ordinary drift.
 
 ## Future-proofing direction
 

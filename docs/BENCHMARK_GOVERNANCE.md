@@ -31,6 +31,7 @@ The `live-hosted` profile is the external-provider benchmark path. It is intende
 At the current project stage, `live-hosted` should be treated as a provider-drift measurement workflow rather than a mandatory release gate. Its value is in exposing where externally hosted model behavior diverges from the deterministic baseline.
 
 Detailed interpretation rules for that drift are defined in `docs/PROVIDER_DRIFT_POLICY.md`.
+Those rules consume fixture-level sensitivity metadata so critical and noisy references can be treated more conservatively than benign references.
 
 ## Acceptance thresholds
 
