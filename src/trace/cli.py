@@ -14,7 +14,7 @@ from trace.report import (
     verify_manifest_signature,
     verify_signing_certificate,
 )
-from trace.validation import run_validation
+from trace.validation import run_benchmark_suite, run_validation
 
 
 DEFAULT_ROOT = Path.cwd() / ".trace_data"
@@ -61,6 +61,10 @@ def build_parser() -> argparse.ArgumentParser:
     validate = sub.add_parser("validate")
     validate.add_argument("--reference", required=True)
     validate.add_argument("--root", default=str(DEFAULT_ROOT))
+
+    benchmark = sub.add_parser("benchmark")
+    benchmark.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
+    benchmark.add_argument("--root", default=str(DEFAULT_ROOT))
 
     verify = sub.add_parser("verify-package")
     verify.add_argument("--package", required=True)
@@ -133,9 +137,28 @@ def main() -> None:
 
     if args.command == "validate":
         result = run_validation(Path(args.reference), Path(args.root))
+        print(f"[VALIDATE] Reference: {result.reference_name}")
         print(f"[VALIDATE] Behavioral agreement: {result.behavioral_agreement:.1f}%")
         print(f"[VALIDATE] Vulnerability agreement: {result.vulnerability_agreement:.1f}%")
         print(f"[VALIDATE] Findings match: {result.findings_match}")
+        print(f"[VALIDATE] Pass thresholds: {result.pass_thresholds}")
+        return
+
+    if args.command == "benchmark":
+        summary = run_benchmark_suite(Path(args.validation_dir), Path(args.root))
+        print(f"[BENCHMARK] Fixtures: {summary['total_fixtures']}")
+        print(f"[BENCHMARK] Passed: {summary['passed_fixtures']}")
+        print(f"[BENCHMARK] Failed: {summary['failed_fixtures']}")
+        print(f"[BENCHMARK] Pass rate: {summary['pass_rate']}%")
+        for result in summary["results"]:
+            print(
+                "[BENCHMARK] "
+                f"{result['reference_name']}: "
+                f"behavior={result['behavioral_agreement']:.1f}% "
+                f"vulnerability={result['vulnerability_agreement']:.1f}% "
+                f"findings_match={result['findings_match']} "
+                f"pass={result['pass_thresholds']}"
+            )
         return
 
     if args.command == "verify-package":

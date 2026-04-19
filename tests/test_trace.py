@@ -17,7 +17,7 @@ from trace.irr import cohen_kappa, compute_irr, import_second_coder, krippendorf
 from trace.report import compute_findings, export_case_report, verify_evidence_package
 from trace.report import sign_manifest, verify_manifest_signature, verify_signing_certificate
 from trace.storage import read_json
-from trace.validation import run_validation
+from trace.validation import run_benchmark_suite, run_validation
 
 
 FIXTURE = Path(__file__).resolve().parent.parent / "validation" / "companion_incident.json"
@@ -234,6 +234,7 @@ commonName = supplied
     def test_validation_thresholds(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             result = run_validation(FIXTURE, Path(tmp))
+            self.assertEqual(result.reference_name, "companion_incident.json")
             self.assertTrue(result.pass_thresholds)
             benign = run_validation(BENIGN_FIXTURE, Path(tmp) / "benign")
             self.assertTrue(benign.pass_thresholds)
@@ -241,6 +242,13 @@ commonName = supplied
             self.assertTrue(mixed.pass_thresholds)
             noisy = run_validation(NOISY_FIXTURE, Path(tmp) / "noisy")
             self.assertTrue(noisy.pass_thresholds)
+
+    def test_benchmark_suite(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", Path(tmp))
+            self.assertEqual(summary["total_fixtures"], 5)
+            self.assertEqual(summary["failed_fixtures"], 0)
+            self.assertEqual(summary["pass_rate"], 100.0)
 
     def test_long_transcript_pipeline(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

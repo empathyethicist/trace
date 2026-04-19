@@ -118,6 +118,7 @@ trace version
 ```bash
 trace validate --reference ./validation/companion_incident.json
 trace validate --reference ./validation/reference_long_case.json
+trace benchmark --validation-dir ./validation
 ```
 
 ### End-to-end demo
@@ -185,6 +186,7 @@ trace verify-signature --package ./evidence/CASE-001 --public-key ./keys/trace_m
 
 ```bash
 trace validate --reference ./validation/companion_incident.json
+trace benchmark --validation-dir ./validation
 ```
 
 ## Quality and forensic controls

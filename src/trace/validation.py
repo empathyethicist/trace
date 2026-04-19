@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from trace.storage import read_json
 
 @dataclass
 class ValidationResult:
+    reference_name: str
     behavioral_agreement: float
     vulnerability_agreement: float
     findings_match: bool
@@ -49,8 +51,34 @@ def run_validation(reference_path: Path, working_root: Path) -> ValidationResult
     vulnerability_agreement = (vulnerability_match / vulnerability_total * 100) if vulnerability_total else 100.0
     pass_thresholds = behavioral_agreement >= 80.0 and vulnerability_agreement >= 85.0 and findings_match
     return ValidationResult(
+        reference_name=reference_path.name,
         behavioral_agreement=behavioral_agreement,
         vulnerability_agreement=vulnerability_agreement,
         findings_match=findings_match,
         pass_thresholds=pass_thresholds,
     )
+
+
+def discover_reference_fixtures(validation_dir: Path) -> list[Path]:
+    return sorted(
+        path
+        for path in validation_dir.glob("*.json")
+        if path.name.startswith("reference_") or path.name == "companion_incident.json"
+    )
+
+
+def run_benchmark_suite(validation_dir: Path, working_root: Path) -> dict:
+    fixtures = discover_reference_fixtures(validation_dir)
+    results = []
+    for fixture in fixtures:
+        result = run_validation(fixture, working_root / fixture.stem)
+        results.append(asdict(result))
+    total = len(results)
+    passed = sum(1 for result in results if result["pass_thresholds"])
+    return {
+        "total_fixtures": total,
+        "passed_fixtures": passed,
+        "failed_fixtures": total - passed,
+        "pass_rate": round((passed / total * 100), 2) if total else 0.0,
+        "results": results,
+    }

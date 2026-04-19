@@ -49,6 +49,7 @@ The repository test suite currently covers:
 - inter-rater reliability metrics
 - mock-provider classification path
 - validation-threshold pass conditions
+- full benchmark-suite execution across bundled reference fixtures
 
 Run locally:
 
@@ -113,6 +114,7 @@ trace validate --reference ./validation/reference_benign_case.json
 trace validate --reference ./validation/reference_long_case.json
 trace validate --reference ./validation/reference_mixed_case.json
 trace validate --reference ./validation/reference_noisy_case.json
+trace benchmark --validation-dir ./validation
 ```
 
 ## What is not yet fully validated
