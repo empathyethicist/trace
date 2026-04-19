@@ -18,6 +18,22 @@ TRACE currently validates the following:
 - dual-coder IRR computation
 - reference-case agreement using the Companion Incident fixture
 
+## Current benchmark snapshot
+
+The table below reflects the current repository validation posture on the included reference fixture.
+
+| Validation target | Current state |
+|---|---|
+| Automated unit/regression suite | Passing |
+| Reference behavioral agreement threshold | Implemented |
+| Reference vulnerability agreement threshold | Implemented |
+| Expected findings comparison | Implemented |
+| Dual-coder IRR computation | Implemented |
+| Multiple gold-standard fixtures | Not yet implemented |
+| Parser validation for UFED / AXIOM exports | Not yet implemented |
+| Hosted-provider benchmark corpus | Not yet implemented |
+| PDF report validation | Not yet implemented |
+
 ## Current automated checks
 
 The repository test suite currently covers:
@@ -64,6 +80,14 @@ The following are still required for stronger production confidence:
 - adversarial validation of malformed or schema-drifting provider outputs
 - examiner override workflow validation under realistic review conditions
 - rendered report validation for final legal-facing output
+
+## Evidence of current outputs
+
+TRACE now includes a sample exported package at:
+
+- `examples/companion_incident_package/`
+
+This is intended to make package structure, manifest composition, and exported artifacts directly inspectable by reviewers.
 
 ## Validation standard for forensic credibility
 

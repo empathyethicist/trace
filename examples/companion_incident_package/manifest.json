@@ -1,0 +1,20 @@
+{
+  "trace_version": "2.0.0",
+  "case_id": "EXAMPLE-001",
+  "export_timestamp": "2026-04-19T12:50:39+00:00",
+  "examiner_id": "D. Mobley",
+  "source_hash_sha256": "8087d8ccefa6afec18d76194195a70a40dd82fb204e7970739e57dbe9993308d",
+  "classified_hash_sha256": "226198e7b62ea47cdccb1600815c66f77e8fed8b4bdba88e44eda4295b1471ee",
+  "package_hash_sha256": "e339610554956b4f5e6adffc8cd876c755e9f47e8c45893c96b5209c55438cb3",
+  "classification_mode": "heuristic_assisted_human_reviewed",
+  "prompt_template_versions": {
+    "system_behavioral": "sbc_v1.0",
+    "user_vulnerability": "uvc_v1.0",
+    "state_summary": "ssg_v1.0"
+  },
+  "schema_versions": {
+    "behavioral": "zhang_2025_v1",
+    "vulnerability": "cssrs_derived_v1"
+  },
+  "irr_statistics": {}
+}

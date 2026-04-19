@@ -180,6 +180,9 @@ TRACE is designed around the following controls:
 - Roadmap: `docs/ROADMAP.md`
 - Validation posture: `docs/VALIDATION.md`
 - Evidence package specification: `docs/EVIDENCE_PACKAGE_SPEC.md`
+- Architecture: `docs/ARCHITECTURE.md`
+- Threat model: `docs/THREAT_MODEL.md`
+- Example exported artifacts: `examples/README.md`
 
 ## Development notes
 

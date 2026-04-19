@@ -1,0 +1,5 @@
+{
+  "provider": "heuristic",
+  "model": "trace-heuristic-v1",
+  "temperature": 0.0
+}
