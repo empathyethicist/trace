@@ -17,7 +17,7 @@ from trace.irr import cohen_kappa, compute_irr, import_second_coder, krippendorf
 from trace.report import compute_findings, export_case_report, verify_evidence_package
 from trace.report import sign_manifest, verify_manifest_signature, verify_signing_certificate
 from trace.storage import read_json
-from trace.validation import run_benchmark_suite, run_validation
+from trace.validation import run_benchmark_suite, run_validation, write_benchmark_artifacts
 
 
 FIXTURE = Path(__file__).resolve().parent.parent / "validation" / "companion_incident.json"
@@ -235,6 +235,7 @@ commonName = supplied
         with tempfile.TemporaryDirectory() as tmp:
             result = run_validation(FIXTURE, Path(tmp))
             self.assertEqual(result.reference_name, "companion_incident.json")
+            self.assertEqual(result.profile, "heuristic")
             self.assertTrue(result.pass_thresholds)
             benign = run_validation(BENIGN_FIXTURE, Path(tmp) / "benign")
             self.assertTrue(benign.pass_thresholds)
@@ -249,6 +250,22 @@ commonName = supplied
             self.assertEqual(summary["total_fixtures"], 5)
             self.assertEqual(summary["failed_fixtures"], 0)
             self.assertEqual(summary["pass_rate"], 100.0)
+            self.assertGreater(summary["total_elapsed_seconds"], 0.0)
+            hosted = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", Path(tmp) / "hosted", profile="hosted")
+            self.assertEqual(hosted["profile"], "hosted")
+            self.assertEqual(hosted["failed_fixtures"], 0)
+
+    def test_benchmark_artifact_export(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            summary = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "bench")
+            artifacts = write_benchmark_artifacts(summary, root / "artifacts")
+            self.assertTrue(artifacts["json"].exists())
+            self.assertTrue(artifacts["markdown"].exists())
+            markdown = artifacts["markdown"].read_text(encoding="utf-8")
+            self.assertIn("# TRACE Benchmark Summary", markdown)
+            payload = read_json(artifacts["json"])
+            self.assertEqual(payload["total_fixtures"], 5)
 
     def test_long_transcript_pipeline(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

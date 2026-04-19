@@ -119,6 +119,7 @@ trace version
 trace validate --reference ./validation/companion_incident.json
 trace validate --reference ./validation/reference_long_case.json
 trace benchmark --validation-dir ./validation
+trace benchmark --validation-dir ./validation --profile hosted --output-dir ./benchmark_artifacts
 ```
 
 ### End-to-end demo
@@ -187,6 +188,7 @@ trace verify-signature --package ./evidence/CASE-001 --public-key ./keys/trace_m
 ```bash
 trace validate --reference ./validation/companion_incident.json
 trace benchmark --validation-dir ./validation
+trace benchmark --validation-dir ./validation --profile hosted --output-dir ./benchmark_artifacts
 ```
 
 ## Quality and forensic controls

@@ -14,7 +14,7 @@ from trace.report import (
     verify_manifest_signature,
     verify_signing_certificate,
 )
-from trace.validation import run_benchmark_suite, run_validation
+from trace.validation import run_benchmark_suite, run_validation, write_benchmark_artifacts
 
 
 DEFAULT_ROOT = Path.cwd() / ".trace_data"
@@ -65,6 +65,8 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark = sub.add_parser("benchmark")
     benchmark.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
     benchmark.add_argument("--root", default=str(DEFAULT_ROOT))
+    benchmark.add_argument("--profile", default="heuristic", choices=["heuristic", "hosted"])
+    benchmark.add_argument("--output-dir")
 
     verify = sub.add_parser("verify-package")
     verify.add_argument("--package", required=True)
@@ -145,20 +147,28 @@ def main() -> None:
         return
 
     if args.command == "benchmark":
-        summary = run_benchmark_suite(Path(args.validation_dir), Path(args.root))
+        summary = run_benchmark_suite(Path(args.validation_dir), Path(args.root), profile=args.profile)
         print(f"[BENCHMARK] Fixtures: {summary['total_fixtures']}")
         print(f"[BENCHMARK] Passed: {summary['passed_fixtures']}")
         print(f"[BENCHMARK] Failed: {summary['failed_fixtures']}")
         print(f"[BENCHMARK] Pass rate: {summary['pass_rate']}%")
+        print(f"[BENCHMARK] Profile: {summary['profile']}")
+        print(f"[BENCHMARK] Total time: {summary['total_elapsed_seconds']}s")
         for result in summary["results"]:
             print(
                 "[BENCHMARK] "
                 f"{result['reference_name']}: "
+                f"profile={result['profile']} "
                 f"behavior={result['behavioral_agreement']:.1f}% "
                 f"vulnerability={result['vulnerability_agreement']:.1f}% "
                 f"findings_match={result['findings_match']} "
-                f"pass={result['pass_thresholds']}"
+                f"pass={result['pass_thresholds']} "
+                f"time={result['elapsed_seconds']}s"
             )
+        if args.output_dir:
+            artifacts = write_benchmark_artifacts(summary, Path(args.output_dir))
+            print(f"[BENCHMARK] JSON artifact: {artifacts['json']}")
+            print(f"[BENCHMARK] Markdown artifact: {artifacts['markdown']}")
         return
 
     if args.command == "verify-package":

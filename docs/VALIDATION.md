@@ -115,7 +115,15 @@ trace validate --reference ./validation/reference_long_case.json
 trace validate --reference ./validation/reference_mixed_case.json
 trace validate --reference ./validation/reference_noisy_case.json
 trace benchmark --validation-dir ./validation
+trace benchmark --validation-dir ./validation --profile hosted --output-dir ./benchmark_artifacts
 ```
+
+The benchmark command can emit:
+
+- `benchmark_summary.json`
+- `benchmark_summary.md`
+
+This allows TRACE benchmark runs to be preserved as inspectable artifacts rather than only terminal output.
 
 ## What is not yet fully validated
 
