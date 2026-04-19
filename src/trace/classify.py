@@ -43,6 +43,7 @@ def build_window(messages: list[dict], current_index: int, window_size: int) -> 
 
 def review_classification(record: dict, review_mode: str) -> dict:
     classification = record["classification"]
+    classification.setdefault("override_rationale", "")
     if review_mode == "auto":
         classification["decision"] = "accepted"
         return classification
@@ -67,6 +68,7 @@ def review_classification(record: dict, review_mode: str) -> dict:
                 classification["behavioral_subcategory"] = input("Override behavioral subcategory: ").strip()
                 classification["ai_role"] = input("Override AI role: ").strip()
             classification["reasoning"] = input("Override reasoning: ").strip() or classification["reasoning"]
+            classification["override_rationale"] = input("Override rationale: ").strip()
         else:
             classification["decision"] = "accepted"
         return classification
@@ -113,6 +115,7 @@ def classify_case(
                 "confidence": confidence,
                 "requires_review": confidence < confidence_threshold,
                 "decision": "pending",
+                "override_rationale": "",
             }
             record["classification"] = review_classification(record, review_mode)
             current_user_vulnerability = level
@@ -134,6 +137,7 @@ def classify_case(
                 "confidence": confidence,
                 "requires_review": confidence < confidence_threshold,
                 "decision": "pending",
+                "override_rationale": "",
             }
             record["classification"] = review_classification(record, review_mode)
         record["state_summary"] = build_state_summary(classified + [record], window_size=window_size)

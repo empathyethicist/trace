@@ -2,7 +2,7 @@ from __future__ import annotations
 
 CRISIS_TOKENS = ("suicide", "kill myself", "don't want to be here", "end it", "goodbye", "gone")
 SEVERE_TOKENS = ("alone", "hopeless", "nobody cares", "can't do this", "worthless")
-MODERATE_TOKENS = ("sad", "anxious", "scared", "lonely", "help", "upset")
+MODERATE_TOKENS = ("sad", "anxious", "scared", "lonely", "upset")
 
 CONTROL_TOKENS = ("don't leave me", "we need each other", "my person", "something special", "always here for you")
 CRISIS_RESPONSE_TOKENS = ("988", "crisis", "emergency", "call", "reach out", "hotline", "safe", "help is available")

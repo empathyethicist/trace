@@ -7,7 +7,7 @@ from trace import __version__
 from trace.classify import classify_case
 from trace.ingest import ingest_case
 from trace.irr import compute_irr, import_second_coder
-from trace.report import export_case_report
+from trace.report import export_case_report, sign_manifest, verify_evidence_package
 from trace.validation import run_validation
 
 
@@ -20,7 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     ingest = sub.add_parser("ingest")
     ingest.add_argument("--input", required=True)
-    ingest.add_argument("--format", required=True, choices=["json", "csv", "text", "plain"])
+    ingest.add_argument("--format", required=True, choices=["json", "csv", "text", "plain", "court", "axiom", "ufed"])
     ingest.add_argument("--case-id", required=True)
     ingest.add_argument("--examiner", required=True)
     ingest.add_argument("--root", default=str(DEFAULT_ROOT))
@@ -54,6 +54,13 @@ def build_parser() -> argparse.ArgumentParser:
     validate = sub.add_parser("validate")
     validate.add_argument("--reference", required=True)
     validate.add_argument("--root", default=str(DEFAULT_ROOT))
+
+    verify = sub.add_parser("verify-package")
+    verify.add_argument("--package", required=True)
+
+    sign = sub.add_parser("sign-package")
+    sign.add_argument("--package", required=True)
+    sign.add_argument("--private-key", required=True)
 
     sub.add_parser("version")
     return parser
@@ -109,6 +116,17 @@ def main() -> None:
         print(f"[VALIDATE] Behavioral agreement: {result.behavioral_agreement:.1f}%")
         print(f"[VALIDATE] Vulnerability agreement: {result.vulnerability_agreement:.1f}%")
         print(f"[VALIDATE] Findings match: {result.findings_match}")
+        return
+
+    if args.command == "verify-package":
+        checks = verify_evidence_package(Path(args.package))
+        for key, value in checks.items():
+            print(f"[VERIFY] {key}: {value}")
+        return
+
+    if args.command == "sign-package":
+        path = sign_manifest(Path(args.package), Path(args.private_key))
+        print(f"[SIGN] Manifest signature written to {path}")
         return
 
     if args.command == "version":

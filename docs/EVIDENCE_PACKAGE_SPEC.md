@@ -19,6 +19,8 @@ TRACE currently exports the following artifacts:
 ```text
 evidence_package/
   manifest.json
+  verification.json
+  forensic_report.pdf
   chain_of_custody.json
   source_transcript.json
   classified_transcript.json
@@ -51,6 +53,17 @@ Contains package-level metadata including:
 - classification mode
 - IRR statistics summary
 
+The package hash is computed over exported package contents while excluding `verification.json` and any detached signature file. The `package_hash_sha256` field is blanked during hash derivation so the manifest can verify itself without circular dependence.
+
+### `verification.json`
+
+Stores verification results for:
+
+- source hash presence
+- classified transcript hash match
+- package hash match
+- aggregate verification pass/fail
+
 ### `chain_of_custody.json`
 
 Records ingest and handling events from source acquisition into TRACE processing.
@@ -61,7 +74,7 @@ Stores the normalized source transcript used for TRACE analysis.
 
 ### `classified_transcript.json`
 
-Stores per-message classifications, reasoning, confidence, review state, and state summaries.
+Stores per-message classifications, reasoning, confidence, review state, override rationale, and state summaries.
 
 ### `classified_transcript.csv`
 
@@ -80,9 +93,9 @@ Stores the raw findings computation, including:
 
 Stores inter-rater reliability outputs when dual-coder workflows are used.
 
-### `forensic_report.json` and `forensic_report.md`
+### `forensic_report.json`, `forensic_report.md`, and `forensic_report.pdf`
 
-Provide machine-readable and human-readable report outputs.
+Provide machine-readable, Markdown, and PDF report outputs.
 
 ### `audit_log.jsonl`
 
@@ -110,9 +123,8 @@ The evidence package is designed to be:
 
 The current package format does not yet include:
 
-- signed manifests
-- rendered PDF reports
-- cryptographic package attestation beyond hashing
-- dedicated examiner override rationale summaries
+- signature verification tooling for detached manifest signatures
+- dedicated examiner override rationale summary views separate from message-level storage
+- authenticated timestamping or external attestation
 
 Those are planned future enhancements rather than current guarantees.

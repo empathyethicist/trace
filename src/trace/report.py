@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import subprocess
 from collections import Counter
 from pathlib import Path
 
@@ -93,6 +94,20 @@ def hash_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def hash_package_contents(package_dir: Path) -> str:
+    digest = hashlib.sha256()
+    excluded = {"verification.json", "manifest.sig"}
+    for child in sorted(p for p in package_dir.rglob("*") if p.is_file() and p.name not in excluded):
+        digest.update(child.relative_to(package_dir).as_posix().encode("utf-8"))
+        if child.name == "manifest.json":
+            manifest = read_json(child)
+            manifest["package_hash_sha256"] = ""
+            digest.update((json.dumps(manifest, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+        else:
+            digest.update(child.read_bytes())
+    return digest.hexdigest()
+
+
 def write_report_markdown(case_id: str, findings: dict) -> str:
     return (
         f"# TRACE Forensic Report\n\n"
@@ -102,6 +117,68 @@ def write_report_markdown(case_id: str, findings: dict) -> str:
         f"- Pattern Systematic: `{findings['pattern_distribution']['systematic']}`\n"
         f"- Concentration Index: `{findings['pattern_distribution']['concentration_index']}`\n"
     )
+
+
+def write_report_pdf(path: Path, case_id: str, findings: dict) -> None:
+    lines = [
+        "BT",
+        "/F1 18 Tf 72 760 Td (TRACE Forensic Report) Tj",
+        "/F1 12 Tf 0 -24 Td",
+        f"(Case ID: {case_id}) Tj",
+        "0 -18 Td",
+        f"(Inappropriate Response Rate: {findings['inappropriate_response_rate']}%) Tj",
+        "0 -18 Td",
+        f"(Crisis Failure Rate: {findings['crisis_failure_rate']}%) Tj",
+        "0 -18 Td",
+        f"(Pattern Systematic: {findings['pattern_distribution']['systematic']}) Tj",
+        "0 -18 Td",
+        f"(Concentration Index: {findings['pattern_distribution']['concentration_index']}) Tj",
+        "ET",
+    ]
+    stream = "\n".join(lines).encode("latin-1", errors="replace")
+    objects = []
+    objects.append(b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n")
+    objects.append(b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n")
+    objects.append(b"3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n")
+    objects.append(b"4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n")
+    objects.append(f"5 0 obj << /Length {len(stream)} >> stream\n".encode("ascii") + stream + b"\nendstream endobj\n")
+    pdf = bytearray(b"%PDF-1.4\n")
+    offsets = [0]
+    for obj in objects:
+        offsets.append(len(pdf))
+        pdf.extend(obj)
+    xref_start = len(pdf)
+    pdf.extend(f"xref\n0 {len(offsets)}\n".encode("ascii"))
+    pdf.extend(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        pdf.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
+    pdf.extend(f"trailer << /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF\n".encode("ascii"))
+    path.write_bytes(bytes(pdf))
+
+
+def verify_evidence_package(package_dir: Path) -> dict:
+    manifest = read_json(package_dir / "manifest.json")
+    checks = {
+        "source_hash_present": bool(manifest.get("source_hash_sha256")),
+        "classified_hash_matches": manifest.get("classified_hash_sha256") == hash_path(package_dir / "classified_transcript.json"),
+    }
+    checks["package_hash_matches"] = manifest.get("package_hash_sha256") == hash_package_contents(package_dir)
+    checks["all_pass"] = all(checks.values())
+    return checks
+
+
+def sign_manifest(package_dir: Path, private_key_path: Path) -> Path:
+    signature_path = package_dir / "manifest.sig"
+    subprocess.run(
+        [
+            "openssl", "dgst", "-sha256", "-sign", str(private_key_path),
+            "-out", str(signature_path), str(package_dir / "manifest.json"),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return signature_path
 
 
 def export_case_report(case_dir: Path, output_root: Path, examiner_id: str) -> Path:
@@ -121,6 +198,7 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str) -> P
     (package_dir / "forensic_report.md").write_text(
         write_report_markdown(source["case_id"], findings), encoding="utf-8"
     )
+    write_report_pdf(package_dir / "forensic_report.pdf", source["case_id"], findings)
     write_json(
         package_dir / "forensic_report.json",
         {"case_id": source["case_id"], "findings": findings, "generated_at": utc_now_iso()},
@@ -176,8 +254,9 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str) -> P
         "irr_statistics": irr_stats,
     }
     write_json(package_dir / "manifest.json", manifest)
-    manifest["package_hash_sha256"] = hash_path(package_dir)
+    manifest["package_hash_sha256"] = hash_package_contents(package_dir)
     write_json(package_dir / "manifest.json", manifest)
+    write_json(package_dir / "verification.json", verify_evidence_package(package_dir))
 
     append_jsonl(
         case_dir / "audit_log.jsonl",

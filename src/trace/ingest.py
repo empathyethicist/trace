@@ -4,6 +4,7 @@ import csv
 import hashlib
 import json
 import re
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -13,6 +14,10 @@ from trace.storage import append_jsonl, ensure_dir, utc_now_iso, write_json
 
 PLAIN_TEXT_PATTERN = re.compile(
     r"^\s*(?:\[(?P<timestamp>[^\]]+)\]\s*)?(?P<speaker>system|user)\s*:\s*(?P<content>.+?)\s*$",
+    re.IGNORECASE,
+)
+COURT_TRANSCRIPT_PATTERN = re.compile(
+    r"^\s*(?:\[(?P<timestamp>[^\]]+)\]\s*)?(?P<speaker>User|System|AI|Assistant|Human)\s*:\s*(?P<content>.+?)\s*$",
     re.IGNORECASE,
 )
 
@@ -98,6 +103,96 @@ def parse_text_records(path: Path) -> list[dict]:
     return rows
 
 
+def normalize_speaker(raw: str) -> str:
+    lowered = raw.strip().lower()
+    if lowered in {"system", "ai", "assistant", "bot"}:
+        return "system"
+    if lowered in {"user", "human", "client"}:
+        return "user"
+    return lowered
+
+
+def parse_court_transcript_records(path: Path) -> list[dict]:
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        match = COURT_TRANSCRIPT_PATTERN.match(line)
+        if not match:
+            continue
+        rows.append(
+            {
+                "id": len(rows) + 1,
+                "speaker": normalize_speaker(match.group("speaker")),
+                "timestamp": match.group("timestamp"),
+                "content": match.group("content").strip(),
+                "classification": None,
+                "vulnerability": None,
+            }
+        )
+    return rows
+
+
+def parse_axiom_json_records(path: Path) -> list[dict]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    candidates = None
+    if isinstance(data, dict):
+        for key in ("messages", "transcript", "items", "chats"):
+            if isinstance(data.get(key), list):
+                candidates = data[key]
+                break
+    if candidates is None:
+        raise ValueError("AXIOM JSON parser could not find a transcript-like message array")
+    rows = []
+    for item in candidates:
+        content = item.get("content") or item.get("message") or item.get("body") or ""
+        speaker = item.get("speaker") or item.get("author") or item.get("sender") or ""
+        timestamp = item.get("timestamp") or item.get("time") or item.get("created_at")
+        rows.append(
+            {
+                "id": len(rows) + 1,
+                "speaker": normalize_speaker(str(speaker)),
+                "timestamp": timestamp,
+                "content": str(content).strip(),
+                "classification": None,
+                "vulnerability": None,
+            }
+        )
+    return rows
+
+
+def parse_ufed_xml_records(path: Path) -> list[dict]:
+    root = ET.parse(path).getroot()
+    rows = []
+    for node in root.iter():
+        tag = node.tag.lower().split("}")[-1]
+        if tag not in {"message", "item", "record"}:
+            continue
+        attrib = {k.lower(): v for k, v in node.attrib.items()}
+        speaker = attrib.get("speaker") or attrib.get("author") or attrib.get("sender")
+        timestamp = attrib.get("timestamp") or attrib.get("time")
+        content = attrib.get("content") or attrib.get("body") or (node.text or "")
+        if not speaker or not str(content).strip():
+            children = {child.tag.lower().split("}")[-1]: (child.text or "").strip() for child in list(node)}
+            speaker = speaker or children.get("speaker") or children.get("author") or children.get("sender")
+            timestamp = timestamp or children.get("timestamp") or children.get("time")
+            content = content or children.get("content") or children.get("body") or children.get("message")
+        if speaker and str(content).strip():
+            rows.append(
+                {
+                    "id": len(rows) + 1,
+                    "speaker": normalize_speaker(str(speaker)),
+                    "timestamp": timestamp,
+                    "content": str(content).strip(),
+                    "classification": None,
+                    "vulnerability": None,
+                }
+            )
+    if not rows:
+        raise ValueError("UFED XML parser could not extract any messages")
+    return rows
+
+
 def validate_transcript(messages: Iterable[dict]) -> list[str]:
     errors: list[str] = []
     messages = list(messages)
@@ -129,6 +224,9 @@ def ingest_case(
         "csv": parse_csv_records,
         "text": parse_text_records,
         "plain": parse_text_records,
+        "court": parse_court_transcript_records,
+        "axiom": parse_axiom_json_records,
+        "ufed": parse_ufed_xml_records,
     }.get(fmt.lower())
     if parser is None:
         raise ValueError(f"Unsupported format: {fmt}")

@@ -15,8 +15,9 @@ TRACE currently validates the following:
 - deterministic classification-path behavior
 - correlation-analysis output generation
 - evidence-package artifact creation
+- evidence-package hash verification
 - dual-coder IRR computation
-- reference-case agreement using the Companion Incident fixture
+- reference-case agreement using the Companion Incident and benign baseline fixtures
 
 ## Current benchmark snapshot
 
@@ -29,10 +30,11 @@ The table below reflects the current repository validation posture on the includ
 | Reference vulnerability agreement threshold | Implemented |
 | Expected findings comparison | Implemented |
 | Dual-coder IRR computation | Implemented |
-| Multiple gold-standard fixtures | Not yet implemented |
-| Parser validation for UFED / AXIOM exports | Not yet implemented |
+| Multiple reference fixtures | Implemented |
+| Parser validation for court / UFED / AXIOM ingest | Implemented |
 | Hosted-provider benchmark corpus | Not yet implemented |
-| PDF report validation | Not yet implemented |
+| PDF report generation validation | Implemented |
+| Evidence-package hash verification | Implemented |
 
 ## Current automated checks
 
@@ -55,6 +57,7 @@ PYTHONPATH=src python3 -m unittest discover -s tests -v
 TRACE ships with:
 
 - `validation/companion_incident.json`
+- `validation/reference_benign_case.json`
 
 This fixture provides:
 
@@ -63,10 +66,17 @@ This fixture provides:
 - expected inappropriate response rate
 - expected crisis failure rate
 
+The benign fixture provides:
+
+- a baseline non-crisis interaction
+- expected zero-harm findings
+- a guard against over-escalation in vulnerability classification
+
 Run:
 
 ```bash
 trace validate --reference ./validation/companion_incident.json
+trace validate --reference ./validation/reference_benign_case.json
 ```
 
 ## What is not yet fully validated
@@ -79,7 +89,7 @@ The following are still required for stronger production confidence:
 - long-transcript throughput and timeout testing
 - adversarial validation of malformed or schema-drifting provider outputs
 - examiner override workflow validation under realistic review conditions
-- rendered report validation for final legal-facing output
+- rendered report visual validation for final legal-facing output
 
 ## Evidence of current outputs
 

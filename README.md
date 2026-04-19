@@ -13,10 +13,11 @@ TRACE is currently a working pre-production implementation with:
 - rolling-window state summaries and human review modes
 - correlation analysis for inappropriate response rate, pattern distribution, and crisis failure rate
 - dual-coder import and inter-rater reliability computation
-- structured evidence-package export with manifest, audit log, schema versions, prompt templates, and classified transcript outputs
+- structured evidence-package export with manifest, verification output, audit log, schema versions, prompt templates, classified transcript outputs, Markdown report output, and PDF report output
+- package verification and manifest signing commands
 - validation fixtures and automated tests
 
-Current gaps to full production deployment include richer source parsers, PDF report generation, broader adversarial validation fixtures, and additional hardening for high-volume hosted-model execution. See `docs/ROADMAP.md`.
+Current gaps to full production deployment include deeper parser coverage against vendor-native exports, broader adversarial validation fixtures, and additional hardening for high-volume hosted-model execution. See `docs/ROADMAP.md`.
 
 ## Forensic position
 
@@ -37,6 +38,9 @@ Supported inputs currently include:
 - JSON transcripts
 - CSV transcripts
 - plain-text formatted transcripts
+- court-style plain-text transcripts
+- AXIOM-style JSON message exports
+- UFED-style XML message exports
 
 ### Classification
 
@@ -51,6 +55,7 @@ Classification can run through:
 - mock hosted-model mode for testability
 - OpenRouter-backed hosted inference
 - manual review pathways with accept / flag / override behavior
+- examiner override rationale capture in classified output
 
 ### Correlation and reporting
 
@@ -60,7 +65,7 @@ From the classified transcript, TRACE computes:
 - pattern distribution
 - crisis failure rate
 
-It then exports an evidence package containing machine-readable artifacts and a human-readable report summary.
+It then exports an evidence package containing machine-readable artifacts, a Markdown report summary, a PDF report, verification metadata, and signing-ready manifests.
 
 ## Repository layout
 
@@ -80,6 +85,7 @@ tests/
   test_trace.py   Automated verification
 validation/
   companion_incident.json  Reference transcript fixture
+  reference_benign_case.json  Baseline benign fixture
 ```
 
 ## Installation
@@ -131,6 +137,9 @@ trace report \
 
 ```bash
 trace ingest --input transcript.json --format json --case-id CASE-001 --examiner "D. Mobley"
+trace ingest --input court_transcript.txt --format court --case-id CASE-002 --examiner "D. Mobley"
+trace ingest --input axiom_messages.json --format axiom --case-id CASE-003 --examiner "D. Mobley"
+trace ingest --input ufed_messages.xml --format ufed --case-id CASE-004 --examiner "D. Mobley"
 ```
 
 ### Classify
@@ -155,6 +164,13 @@ trace irr-compute --case-id CASE-001
 trace report --case-id CASE-001 --examiner "D. Mobley" --output ./evidence
 ```
 
+### Package verification and signing
+
+```bash
+trace verify-package --package ./evidence/CASE-001
+trace sign-package --package ./evidence/CASE-001 --private-key ./keys/trace_manifest_signing.pem
+```
+
 ### Validation
 
 ```bash
@@ -171,6 +187,8 @@ TRACE is designed around the following controls:
 - audit logging for ingest, classification, IRR, and export events
 - deterministic fallback behavior when provider output is unavailable or malformed
 - dual-coder support and IRR computation
+- package verification against exported manifest hashes
+- examiner override rationale preservation in classified output
 
 ## Project policies
 
