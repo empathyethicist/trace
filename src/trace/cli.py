@@ -7,7 +7,13 @@ from trace import __version__
 from trace.classify import classify_case
 from trace.ingest import ingest_case
 from trace.irr import compute_irr, import_second_coder
-from trace.report import export_case_report, sign_manifest, verify_evidence_package, verify_manifest_signature
+from trace.report import (
+    export_case_report,
+    sign_manifest,
+    verify_evidence_package,
+    verify_manifest_signature,
+    verify_signing_certificate,
+)
 from trace.validation import run_validation
 
 
@@ -49,6 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--case-id", required=True)
     report.add_argument("--examiner", default="trace")
     report.add_argument("--output", required=True)
+    report.add_argument("--examiner-notes-file")
     report.add_argument("--root", default=str(DEFAULT_ROOT))
 
     validate = sub.add_parser("validate")
@@ -64,10 +71,13 @@ def build_parser() -> argparse.ArgumentParser:
     sign.add_argument("--public-key")
     sign.add_argument("--signer-label")
     sign.add_argument("--certificate-chain", action="append", default=[])
+    sign.add_argument("--signing-certificate")
 
     verify_sig = sub.add_parser("verify-signature")
     verify_sig.add_argument("--package", required=True)
     verify_sig.add_argument("--public-key", required=True)
+    verify_sig.add_argument("--ca-file")
+    verify_sig.add_argument("--crl-file")
 
     sub.add_parser("version")
     return parser
@@ -114,7 +124,10 @@ def main() -> None:
         return
 
     if args.command == "report":
-        package = export_case_report(Path(args.root) / "cases" / args.case_id, Path(args.output), args.examiner)
+        examiner_notes = ""
+        if args.examiner_notes_file:
+            examiner_notes = Path(args.examiner_notes_file).read_text(encoding="utf-8")
+        package = export_case_report(Path(args.root) / "cases" / args.case_id, Path(args.output), args.examiner, examiner_notes)
         print(f"[REPORT] Evidence package exported to {package}")
         return
 
@@ -138,6 +151,7 @@ def main() -> None:
             Path(args.public_key) if args.public_key else None,
             args.signer_label,
             [Path(item) for item in args.certificate_chain],
+            Path(args.signing_certificate) if args.signing_certificate else None,
         )
         print(f"[SIGN] Manifest signature written to {path}")
         return
@@ -146,6 +160,14 @@ def main() -> None:
         checks = verify_manifest_signature(Path(args.package), Path(args.public_key))
         for key, value in checks.items():
             print(f"[VERIFY-SIGNATURE] {key}: {value}")
+        if args.ca_file:
+            cert_checks = verify_signing_certificate(
+                Path(args.package),
+                Path(args.ca_file),
+                Path(args.crl_file) if args.crl_file else None,
+            )
+            for key, value in cert_checks.items():
+                print(f"[VERIFY-CERTIFICATE] {key}: {value}")
         return
 
     if args.command == "version":

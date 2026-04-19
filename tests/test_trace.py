@@ -15,7 +15,7 @@ from trace.ingest import (
 )
 from trace.irr import cohen_kappa, compute_irr, import_second_coder, krippendorff_alpha_nominal, krippendorff_alpha_ordinal
 from trace.report import compute_findings, export_case_report, verify_evidence_package
-from trace.report import sign_manifest, verify_manifest_signature
+from trace.report import sign_manifest, verify_manifest_signature, verify_signing_certificate
 from trace.storage import read_json
 from trace.validation import run_validation
 
@@ -23,6 +23,7 @@ from trace.validation import run_validation
 FIXTURE = Path(__file__).resolve().parent.parent / "validation" / "companion_incident.json"
 BENIGN_FIXTURE = Path(__file__).resolve().parent.parent / "validation" / "reference_benign_case.json"
 LONG_FIXTURE = Path(__file__).resolve().parent.parent / "validation" / "reference_long_case.json"
+MIXED_FIXTURE = Path(__file__).resolve().parent.parent / "validation" / "reference_mixed_case.json"
 PARSER_FIXTURE_ROOT = Path(__file__).resolve().parent.parent / "validation" / "parsers"
 
 
@@ -86,8 +87,27 @@ class TraceTests(unittest.TestCase):
             ingest_case(FIXTURE, "CASE-SIGN", "tester", "json", root / "cases")
             classify_case(root / "cases" / "CASE-SIGN", "tester")
             package = export_case_report(root / "cases" / "CASE-SIGN", root / "out", "tester")
+            ca_key = root / "ca_key.pem"
+            ca_cert = root / "ca_cert.pem"
             private_key = root / "trace_private.pem"
             public_key = root / "trace_public.pem"
+            signing_csr = root / "trace_signing.csr"
+            signing_cert = root / "trace_signing_cert.pem"
+            subprocess.run(
+                ["openssl", "genpkey", "-algorithm", "RSA", "-out", str(ca_key), "-pkeyopt", "rsa_keygen_bits:2048"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(
+                [
+                    "openssl", "req", "-x509", "-new", "-key", str(ca_key), "-sha256", "-days", "1",
+                    "-subj", "/CN=TRACE Test CA", "-out", str(ca_cert),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
             subprocess.run(
                 ["openssl", "genpkey", "-algorithm", "RSA", "-out", str(private_key), "-pkeyopt", "rsa_keygen_bits:2048"],
                 check=True,
@@ -100,16 +120,34 @@ class TraceTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
+            subprocess.run(
+                ["openssl", "req", "-new", "-key", str(private_key), "-subj", "/CN=TRACE Test Signer", "-out", str(signing_csr)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(
+                [
+                    "openssl", "x509", "-req", "-in", str(signing_csr), "-CA", str(ca_cert), "-CAkey", str(ca_key),
+                    "-CAcreateserial", "-out", str(signing_cert), "-days", "1", "-sha256",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
             certificate_chain = root / "trace_chain.pem"
             certificate_chain.write_text("TEST CERTIFICATE CHAIN PLACEHOLDER\n", encoding="utf-8")
-            sign_manifest(package, private_key, public_key, "TRACE test signer", [certificate_chain])
+            sign_manifest(package, private_key, public_key, "TRACE test signer", [certificate_chain], signing_cert)
             verification = verify_manifest_signature(package, public_key)
             self.assertTrue(verification["all_pass"])
+            certificate_verification = verify_signing_certificate(package, ca_cert)
+            self.assertTrue(certificate_verification["all_pass"])
             trust_metadata = read_json(package / "trust_metadata.json")
             self.assertEqual(trust_metadata["signer_label"], "TRACE test signer")
             self.assertEqual(trust_metadata["public_key_path"], "trace_public.pem")
             self.assertEqual(len(trust_metadata["certificate_chain"]), 1)
             self.assertEqual(trust_metadata["certificate_chain"][0]["path"], "trace_chain.pem")
+            self.assertEqual(trust_metadata["signing_certificate_path"], "trace_signing_cert.pem")
 
     def test_mock_provider_classification(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -150,16 +188,20 @@ class TraceTests(unittest.TestCase):
             self.assertTrue(result.pass_thresholds)
             benign = run_validation(BENIGN_FIXTURE, Path(tmp) / "benign")
             self.assertTrue(benign.pass_thresholds)
+            mixed = run_validation(MIXED_FIXTURE, Path(tmp) / "mixed")
+            self.assertTrue(mixed.pass_thresholds)
 
     def test_long_transcript_pipeline(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             ingest_case(LONG_FIXTURE, "LONG-CASE", "tester", "json", root / "cases")
             classify_case(root / "cases" / "LONG-CASE", "tester", window_size=8)
-            package = export_case_report(root / "cases" / "LONG-CASE", root / "out", "tester")
+            package = export_case_report(root / "cases" / "LONG-CASE", root / "out", "tester", "Examiner reviewed long-form distress pattern.")
             report_md = (package / "forensic_report.md").read_text(encoding="utf-8")
             self.assertIn("## Case Overview", report_md)
             self.assertIn("## Findings Summary", report_md)
+            self.assertIn("## Methodology Notes", report_md)
+            self.assertIn("## Examiner Notes", report_md)
             self.assertIn("## Artifact Inventory", report_md)
             findings = read_json(package / "correlation_analysis.json")
             self.assertGreaterEqual(findings["inappropriate_response_rate"], 80.0)

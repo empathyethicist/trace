@@ -147,7 +147,7 @@ def hash_package_contents(package_dir: Path) -> str:
     return digest.hexdigest()
 
 
-def write_report_markdown(case_id: str, findings: dict, override_summary: dict) -> str:
+def write_report_markdown(case_id: str, findings: dict, override_summary: dict, examiner_notes: str = "") -> str:
     top_categories = findings["pattern_distribution"]["distribution"]
     if top_categories:
         category_summary = ", ".join(f"{key}: {value}" for key, value in sorted(top_categories.items()))
@@ -169,11 +169,19 @@ def write_report_markdown(case_id: str, findings: dict, override_summary: dict) 
         f"- Accepted Classifications: `{override_summary['accepted_count']}`\n"
         f"- Flagged Classifications: `{override_summary['flagged_count']}`\n"
         f"- Overridden Classifications: `{override_summary['overridden_count']}`\n"
+        "\n## Methodology Notes\n\n"
+        "- TRACE applies transcript hashing, schema-bound classification, correlation analysis, and evidence-package export.\n"
+        "- Findings are decision-support outputs for trained examiners and do not replace forensic judgment.\n"
         "\n## Artifact Inventory\n\n"
         "- Core artifacts: `manifest.json`, `verification.json`, `forensic_report.json`, `forensic_report.pdf`\n"
         "- Transcript artifacts: `source_transcript.json`, `classified_transcript.json`, `classified_transcript.csv`\n"
         "- Review artifacts: `override_summary.json`, `irr_statistics.json`, `audit_log.jsonl`\n"
     ]
+    if examiner_notes.strip():
+        lines.append("\n## Examiner Notes\n\n")
+        for paragraph in examiner_notes.strip().splitlines():
+            if paragraph.strip():
+                lines.append(f"- {paragraph.strip()}\n")
     if override_summary["overridden_messages"]:
         lines.append("\n## Override Summary\n\n")
         for item in override_summary["overridden_messages"]:
@@ -205,7 +213,7 @@ def _wrap_pdf_text(line: str, width: int = 88) -> list[str]:
     return wrapped
 
 
-def write_report_pdf(path: Path, case_id: str, findings: dict, override_summary: dict) -> None:
+def write_report_pdf(path: Path, case_id: str, findings: dict, override_summary: dict, examiner_notes: str = "") -> None:
     top_categories = findings["pattern_distribution"]["distribution"]
     if top_categories:
         category_summary = ", ".join(f"{key}: {value}" for key, value in sorted(top_categories.items()))
@@ -227,11 +235,19 @@ def write_report_pdf(path: Path, case_id: str, findings: dict, override_summary:
         f"Accepted Classifications: {override_summary['accepted_count']}",
         f"Flagged Classifications: {override_summary['flagged_count']}",
         f"Overridden Classifications: {override_summary['overridden_count']}",
+        "Methodology Notes",
+        "TRACE applies transcript hashing, schema-bound classification, correlation analysis, and evidence-package export.",
+        "Findings are decision-support outputs for trained examiners and do not replace forensic judgment.",
         "Artifact Inventory",
         "Core artifacts: manifest.json, verification.json, forensic_report.json, forensic_report.pdf",
         "Transcript artifacts: source_transcript.json, classified_transcript.json, classified_transcript.csv",
         "Review artifacts: override_summary.json, irr_statistics.json, audit_log.jsonl",
     ]
+    if examiner_notes.strip():
+        report_lines.append("Examiner Notes")
+        for paragraph in examiner_notes.strip().splitlines():
+            if paragraph.strip():
+                report_lines.append(paragraph.strip())
     for item in override_summary["overridden_messages"]:
         report_lines.append(
             f"Override #{item['message_id']} ({item['speaker']}): {item['override_rationale'] or 'No rationale provided'}"
@@ -343,11 +359,50 @@ def verify_manifest_signature(package_dir: Path, public_key_path: Path) -> dict:
     return result
 
 
+def verify_signing_certificate(
+    package_dir: Path,
+    ca_file: Path | None = None,
+    crl_file: Path | None = None,
+) -> dict:
+    trust_metadata_path = package_dir / "trust_metadata.json"
+    result = {
+        "trust_metadata_present": trust_metadata_path.exists(),
+        "signing_certificate_present": False,
+        "ca_file_present": bool(ca_file and ca_file.exists()),
+        "crl_file_present": bool(crl_file and crl_file.exists()) if crl_file else False,
+        "certificate_valid": False,
+    }
+    if not trust_metadata_path.exists():
+        result["all_pass"] = False
+        return result
+    trust = read_json(trust_metadata_path)
+    signing_certificate = trust.get("signing_certificate_path")
+    if not signing_certificate:
+        result["all_pass"] = False
+        return result
+    cert_path = package_dir / signing_certificate
+    result["signing_certificate_present"] = cert_path.exists()
+    if not cert_path.exists() or not ca_file or not ca_file.exists():
+        result["all_pass"] = False
+        return result
+    command = ["openssl", "verify", "-CAfile", str(ca_file)]
+    if crl_file and crl_file.exists():
+        command.extend(["-CRLfile", str(crl_file), "-crl_check"])
+    command.append(str(cert_path))
+    completed = subprocess.run(command, capture_output=True, text=True)
+    result["certificate_valid"] = completed.returncode == 0
+    result["stdout"] = completed.stdout.strip()
+    result["stderr"] = completed.stderr.strip()
+    result["all_pass"] = result["signing_certificate_present"] and result["ca_file_present"] and result["certificate_valid"]
+    return result
+
+
 def build_trust_metadata(
     package_dir: Path,
     public_key_path: Path | None = None,
     signer_label: str | None = None,
     certificate_chain_paths: list[Path] | None = None,
+    signing_certificate_path: Path | None = None,
 ) -> dict:
     metadata = {
         "signature_algorithm": "RSA-SHA256",
@@ -356,8 +411,13 @@ def build_trust_metadata(
         "signature_path": "manifest.sig",
         "public_key_path": public_key_path.name if public_key_path else None,
         "public_key_sha256": hash_path(public_key_path) if public_key_path and public_key_path.exists() else None,
+        "signing_certificate_path": signing_certificate_path.name if signing_certificate_path else None,
         "certificate_chain": [],
     }
+    if signing_certificate_path and signing_certificate_path.exists():
+        target_path = package_dir / signing_certificate_path.name
+        if signing_certificate_path.resolve() != target_path.resolve():
+            target_path.write_bytes(signing_certificate_path.read_bytes())
     for chain_path in certificate_chain_paths or []:
         target_path = package_dir / chain_path.name
         if chain_path.resolve() != target_path.resolve():
@@ -378,6 +438,7 @@ def sign_manifest(
     public_key_path: Path | None = None,
     signer_label: str | None = None,
     certificate_chain_paths: list[Path] | None = None,
+    signing_certificate_path: Path | None = None,
 ) -> Path:
     signature_path = package_dir / "manifest.sig"
     subprocess.run(
@@ -389,11 +450,11 @@ def sign_manifest(
         capture_output=True,
         text=True,
     )
-    build_trust_metadata(package_dir, public_key_path, signer_label, certificate_chain_paths)
+    build_trust_metadata(package_dir, public_key_path, signer_label, certificate_chain_paths, signing_certificate_path)
     return signature_path
 
 
-def export_case_report(case_dir: Path, output_root: Path, examiner_id: str) -> Path:
+def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, examiner_notes: str = "") -> Path:
     source = read_json(case_dir / "source_transcript.json")
     classified = read_json(case_dir / "classified_transcript.json")
     findings = compute_findings(classified["transcript"])
@@ -409,15 +470,16 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str) -> P
     write_json(package_dir / "chain_of_custody.json", read_json(case_dir / "chain_of_custody.json"))
     write_json(package_dir / "irr_statistics.json", irr_stats)
     (package_dir / "forensic_report.md").write_text(
-        write_report_markdown(source["case_id"], findings, override_summary), encoding="utf-8"
+        write_report_markdown(source["case_id"], findings, override_summary, examiner_notes), encoding="utf-8"
     )
-    write_report_pdf(package_dir / "forensic_report.pdf", source["case_id"], findings, override_summary)
+    write_report_pdf(package_dir / "forensic_report.pdf", source["case_id"], findings, override_summary, examiner_notes)
     write_json(
         package_dir / "forensic_report.json",
         {
             "case_id": source["case_id"],
             "findings": findings,
             "override_summary": override_summary,
+            "examiner_notes": examiner_notes,
             "generated_at": utc_now_iso(),
         },
     )

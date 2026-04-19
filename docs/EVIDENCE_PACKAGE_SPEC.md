@@ -70,6 +70,7 @@ Stores signing-context metadata including:
 - signer label
 - public key filename
 - public key hash
+- optional signing certificate path
 - optional certificate-chain file hashes
 
 ### `verification.json`
@@ -126,6 +127,8 @@ Provide machine-readable, Markdown, and PDF report outputs, including:
 - case overview metrics
 - findings summary metrics
 - review summary counts
+- methodology notes
+- examiner notes when supplied
 - artifact inventory references
 
 ### `audit_log.jsonl`

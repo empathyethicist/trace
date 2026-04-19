@@ -61,6 +61,7 @@ TRACE ships with:
 - `validation/companion_incident.json`
 - `validation/reference_benign_case.json`
 - `validation/reference_long_case.json`
+- `validation/reference_mixed_case.json`
 - `validation/parsers/`
 
 This fixture provides:
@@ -82,6 +83,12 @@ The long-form fixture provides:
 - repeated elevated-vulnerability states across multiple windows
 - a regression check for report generation under denser transcripts
 
+The mixed fixture provides:
+
+- benign and harmful segments in the same conversation
+- a regression check for mixed-pattern findings
+- validation coverage for transitions between baseline and elevated states
+
 The parser fixtures provide:
 
 - court-style transcript samples
@@ -95,6 +102,7 @@ Run:
 trace validate --reference ./validation/companion_incident.json
 trace validate --reference ./validation/reference_benign_case.json
 trace validate --reference ./validation/reference_long_case.json
+trace validate --reference ./validation/reference_mixed_case.json
 ```
 
 ## What is not yet fully validated

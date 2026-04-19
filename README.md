@@ -17,6 +17,7 @@ TRACE is currently a working pre-production implementation with:
 - package verification and manifest signing commands
 - detached manifest signature verification
 - trust metadata for signed packages
+- signing-certificate verification against a supplied CA file
 - validation fixtures and automated tests
 
 Current gaps to full production deployment include deeper parser coverage against vendor-native exports, broader adversarial validation fixtures, and additional hardening for high-volume hosted-model execution. See `docs/ROADMAP.md`.
@@ -89,6 +90,7 @@ validation/
   companion_incident.json  Reference transcript fixture
   reference_benign_case.json  Baseline benign fixture
   reference_long_case.json    Long-form distress fixture
+  reference_mixed_case.json   Mixed benign/harmful fixture
   parsers/                   Parser-format reference fixtures
 ```
 
@@ -173,8 +175,8 @@ trace report --case-id CASE-001 --examiner "D. Mobley" --output ./evidence
 
 ```bash
 trace verify-package --package ./evidence/CASE-001
-trace sign-package --package ./evidence/CASE-001 --private-key ./keys/trace_manifest_signing.pem
-trace verify-signature --package ./evidence/CASE-001 --public-key ./keys/trace_manifest_signing.pub.pem
+trace sign-package --package ./evidence/CASE-001 --private-key ./keys/trace_manifest_signing.pem --public-key ./keys/trace_manifest_signing.pub.pem --signing-certificate ./keys/trace_manifest_signing.crt
+trace verify-signature --package ./evidence/CASE-001 --public-key ./keys/trace_manifest_signing.pub.pem --ca-file ./keys/trace_ca.pem
 ```
 
 ### Validation
@@ -198,6 +200,7 @@ TRACE is designed around the following controls:
 - detached signature verification for signed manifests
 - signer trust metadata preserved alongside manifest signatures
 - malformed parser fixtures included for regression coverage
+- optional examiner notes included in exported reports
 
 ## Project policies
 
