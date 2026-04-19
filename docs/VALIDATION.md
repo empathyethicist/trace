@@ -122,6 +122,9 @@ The benchmark command can emit:
 
 - `benchmark_summary.json`
 - `benchmark_summary.md`
+- `artifact_manifest.json`
+- `artifact_manifest.sig`
+- `artifact_trust.json`
 
 This allows TRACE benchmark runs to be preserved as inspectable artifacts rather than only terminal output.
 
@@ -131,6 +134,14 @@ The companion comparison workflow can emit:
 - `benchmark_comparison.md`
 
 This supports explicit drift review between heuristic and hosted benchmark profiles.
+
+The benchmark workflow can also emit history snapshots such as:
+
+- `benchmark_heuristic_latest.json`
+- `benchmark_hosted_latest.json`
+- `benchmark_compare_heuristic_vs_hosted_latest.json`
+
+This creates a lightweight baseline history for later regression review.
 
 ## What is not yet fully validated
 

@@ -18,8 +18,11 @@ from trace.validation import (
     compare_benchmark_summaries,
     run_benchmark_suite,
     run_validation,
+    sign_artifact_bundle,
+    verify_artifact_bundle,
     write_benchmark_artifacts,
     write_comparison_artifacts,
+    write_artifact_history_snapshot,
 )
 
 
@@ -73,6 +76,12 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark.add_argument("--root", default=str(DEFAULT_ROOT))
     benchmark.add_argument("--profile", default="heuristic", choices=["heuristic", "hosted"])
     benchmark.add_argument("--output-dir")
+    benchmark.add_argument("--history-dir")
+    benchmark.add_argument("--sign-private-key")
+    benchmark.add_argument("--sign-public-key")
+    benchmark.add_argument("--signer-label", default="TRACE benchmark signer")
+    benchmark.add_argument("--signing-certificate")
+    benchmark.add_argument("--certificate-chain", action="append", default=[])
 
     compare = sub.add_parser("benchmark-compare")
     compare.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
@@ -80,6 +89,12 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--baseline-profile", default="heuristic", choices=["heuristic", "hosted"])
     compare.add_argument("--candidate-profile", default="hosted", choices=["heuristic", "hosted"])
     compare.add_argument("--output-dir")
+    compare.add_argument("--history-dir")
+    compare.add_argument("--sign-private-key")
+    compare.add_argument("--sign-public-key")
+    compare.add_argument("--signer-label", default="TRACE benchmark signer")
+    compare.add_argument("--signing-certificate")
+    compare.add_argument("--certificate-chain", action="append", default=[])
 
     verify = sub.add_parser("verify-package")
     verify.add_argument("--package", required=True)
@@ -182,6 +197,23 @@ def main() -> None:
             artifacts = write_benchmark_artifacts(summary, Path(args.output_dir))
             print(f"[BENCHMARK] JSON artifact: {artifacts['json']}")
             print(f"[BENCHMARK] Markdown artifact: {artifacts['markdown']}")
+            if args.sign_private_key and args.sign_public_key:
+                signed = sign_artifact_bundle(
+                    Path(args.output_dir),
+                    Path(args.sign_private_key),
+                    Path(args.sign_public_key),
+                    args.signer_label,
+                    Path(args.signing_certificate) if args.signing_certificate else None,
+                    [Path(item) for item in args.certificate_chain],
+                )
+                verified = verify_artifact_bundle(Path(args.output_dir), Path(args.sign_public_key))
+                print(f"[BENCHMARK] Artifact manifest: {signed['manifest']}")
+                print(f"[BENCHMARK] Artifact signature: {signed['signature']}")
+                print(f"[BENCHMARK] Artifact trust: {signed['trust']}")
+                print(f"[BENCHMARK] Artifact verification pass: {verified['all_pass']}")
+        if args.history_dir:
+            snapshot = write_artifact_history_snapshot(summary, Path(args.history_dir), f"benchmark_{args.profile}_latest")
+            print(f"[BENCHMARK] History snapshot: {snapshot}")
         return
 
     if args.command == "benchmark-compare":
@@ -207,6 +239,27 @@ def main() -> None:
             artifacts = write_comparison_artifacts(comparison, Path(args.output_dir))
             print(f"[BENCHMARK-COMPARE] JSON artifact: {artifacts['json']}")
             print(f"[BENCHMARK-COMPARE] Markdown artifact: {artifacts['markdown']}")
+            if args.sign_private_key and args.sign_public_key:
+                signed = sign_artifact_bundle(
+                    Path(args.output_dir),
+                    Path(args.sign_private_key),
+                    Path(args.sign_public_key),
+                    args.signer_label,
+                    Path(args.signing_certificate) if args.signing_certificate else None,
+                    [Path(item) for item in args.certificate_chain],
+                )
+                verified = verify_artifact_bundle(Path(args.output_dir), Path(args.sign_public_key))
+                print(f"[BENCHMARK-COMPARE] Artifact manifest: {signed['manifest']}")
+                print(f"[BENCHMARK-COMPARE] Artifact signature: {signed['signature']}")
+                print(f"[BENCHMARK-COMPARE] Artifact trust: {signed['trust']}")
+                print(f"[BENCHMARK-COMPARE] Artifact verification pass: {verified['all_pass']}")
+        if args.history_dir:
+            snapshot = write_artifact_history_snapshot(
+                comparison,
+                Path(args.history_dir),
+                f"benchmark_compare_{args.baseline_profile}_vs_{args.candidate_profile}_latest",
+            )
+            print(f"[BENCHMARK-COMPARE] History snapshot: {snapshot}")
         return
 
     if args.command == "verify-package":

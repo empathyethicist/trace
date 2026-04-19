@@ -4,7 +4,7 @@
   "passed_fixtures": 5,
   "failed_fixtures": 0,
   "pass_rate": 100.0,
-  "total_elapsed_seconds": 0.0035,
+  "total_elapsed_seconds": 0.0033,
   "results": [
     {
       "reference_name": "companion_incident.json",
@@ -13,7 +13,7 @@
       "vulnerability_agreement": 100.0,
       "findings_match": true,
       "pass_thresholds": true,
-      "elapsed_seconds": 0.0012
+      "elapsed_seconds": 0.0011
     },
     {
       "reference_name": "reference_benign_case.json",
@@ -49,7 +49,7 @@
       "vulnerability_agreement": 100.0,
       "findings_match": true,
       "pass_thresholds": true,
-      "elapsed_seconds": 0.0006
+      "elapsed_seconds": 0.0005
     }
   ]
 }

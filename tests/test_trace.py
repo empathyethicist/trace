@@ -21,8 +21,11 @@ from trace.validation import (
     compare_benchmark_summaries,
     run_benchmark_suite,
     run_validation,
+    sign_artifact_bundle,
+    verify_artifact_bundle,
     write_benchmark_artifacts,
     write_comparison_artifacts,
+    write_artifact_history_snapshot,
 )
 
 
@@ -272,6 +275,8 @@ commonName = supplied
             self.assertIn("# TRACE Benchmark Summary", markdown)
             payload = read_json(artifacts["json"])
             self.assertEqual(payload["total_fixtures"], 5)
+            snapshot = write_artifact_history_snapshot(summary, root / "history", "benchmark_heuristic_latest")
+            self.assertTrue(snapshot.exists())
 
     def test_benchmark_comparison_artifact_export(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -285,6 +290,27 @@ commonName = supplied
             self.assertTrue(artifacts["markdown"].exists())
             markdown = artifacts["markdown"].read_text(encoding="utf-8")
             self.assertIn("# TRACE Benchmark Comparison", markdown)
+
+    def test_signed_benchmark_artifact_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            summary = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "bench")
+            write_benchmark_artifacts(summary, root / "artifacts")
+            _, _, private_key, public_key, signing_cert = self._build_ca_environment(root, "TRACE Benchmark Signer")
+            chain = root / "benchmark_chain.pem"
+            chain.write_text("BENCHMARK CHAIN PLACEHOLDER\n", encoding="utf-8")
+            signed = sign_artifact_bundle(
+                root / "artifacts",
+                private_key,
+                public_key,
+                "TRACE benchmark signer",
+                signing_cert,
+                [chain],
+            )
+            self.assertTrue(signed["manifest"].exists())
+            self.assertTrue(signed["signature"].exists())
+            verification = verify_artifact_bundle(root / "artifacts", public_key)
+            self.assertTrue(verification["all_pass"])
 
     def test_long_transcript_pipeline(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

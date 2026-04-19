@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-04-19T14:46:55+00:00",
+  "signer_label": "TRACE example benchmark signer",
+  "files": [
+    {
+      "path": "benchmark_summary.json",
+      "sha256": "f0d34e214ed61b989467803eb329360f38270a22346057f864e4187f923766d1"
+    },
+    {
+      "path": "benchmark_summary.md",
+      "sha256": "902ab58f8fda84f29ed682d62ac276524b91e11af4d63078ee01a9fc78ce3972"
+    }
+  ]
+}

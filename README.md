@@ -121,6 +121,7 @@ trace validate --reference ./validation/reference_long_case.json
 trace benchmark --validation-dir ./validation
 trace benchmark --validation-dir ./validation --profile hosted --output-dir ./benchmark_artifacts
 trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile hosted --output-dir ./benchmark_comparison
+trace benchmark --validation-dir ./validation --output-dir ./benchmark_artifacts --history-dir ./benchmark_history --sign-private-key ./keys/benchmark_signer.pem --sign-public-key ./keys/benchmark_signer_public.pem --signing-certificate ./keys/benchmark_signer.crt
 ```
 
 ### End-to-end demo
@@ -210,6 +211,7 @@ TRACE is designed around the following controls:
 - malformed parser fixtures included for regression coverage
 - optional examiner notes included in exported reports
 - report appendices include artifact checklist and correlation snapshot
+- benchmark artifacts can be signed and archived as history snapshots
 
 ## Project policies
 

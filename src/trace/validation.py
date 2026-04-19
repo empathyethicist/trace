@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from dataclasses import dataclass
+import hashlib
 from pathlib import Path
+import subprocess
 from time import perf_counter
 
 from trace.classify import classify_case
 from trace.ingest import ingest_case
 from trace.report import compute_findings
-from trace.storage import read_json, write_json
+from trace.storage import read_json, utc_now_iso, write_json
 
 
 @dataclass
@@ -178,6 +180,113 @@ def write_comparison_artifacts(comparison: dict, output_dir: Path) -> dict:
     write_json(json_path, comparison)
     md_path.write_text(render_comparison_markdown(comparison), encoding="utf-8")
     return {"json": json_path, "markdown": md_path}
+
+
+def hash_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def write_artifact_history_snapshot(payload: dict, history_dir: Path, label: str) -> Path:
+    history_dir.mkdir(parents=True, exist_ok=True)
+    safe_label = label.replace("/", "_").replace(" ", "_")
+    snapshot = {
+        "label": safe_label,
+        "generated_at": utc_now_iso(),
+        "payload": payload,
+    }
+    snapshot_path = history_dir / f"{safe_label}.json"
+    write_json(snapshot_path, snapshot)
+    return snapshot_path
+
+
+def sign_artifact_bundle(
+    output_dir: Path,
+    private_key_path: Path,
+    public_key_path: Path,
+    signer_label: str,
+    signing_certificate_path: Path | None = None,
+    certificate_chain_paths: list[Path] | None = None,
+) -> dict:
+    manifest_path = output_dir / "artifact_manifest.json"
+    signature_path = output_dir / "artifact_manifest.sig"
+    trust_path = output_dir / "artifact_trust.json"
+    files = []
+    for path in sorted(p for p in output_dir.iterdir() if p.is_file() and p.name not in {manifest_path.name, signature_path.name, trust_path.name}):
+        files.append({"path": path.name, "sha256": hash_file(path)})
+    manifest = {
+        "generated_at": utc_now_iso(),
+        "signer_label": signer_label,
+        "files": files,
+    }
+    write_json(manifest_path, manifest)
+    subprocess.run(
+        [
+            "openssl", "dgst", "-sha256", "-sign", str(private_key_path),
+            "-out", str(signature_path), str(manifest_path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    trust = {
+        "signer_label": signer_label,
+        "public_key_path": public_key_path.name,
+        "public_key_sha256": hash_file(public_key_path),
+        "signing_certificate_path": signing_certificate_path.name if signing_certificate_path else None,
+        "certificate_chain": [],
+    }
+    target_public_key = output_dir / public_key_path.name
+    if public_key_path.resolve() != target_public_key.resolve():
+        target_public_key.write_bytes(public_key_path.read_bytes())
+    if signing_certificate_path and signing_certificate_path.exists():
+        target_cert = output_dir / signing_certificate_path.name
+        if signing_certificate_path.resolve() != target_cert.resolve():
+            target_cert.write_bytes(signing_certificate_path.read_bytes())
+    for chain_path in certificate_chain_paths or []:
+        target_chain = output_dir / chain_path.name
+        if chain_path.resolve() != target_chain.resolve():
+            target_chain.write_bytes(chain_path.read_bytes())
+        trust["certificate_chain"].append({"path": chain_path.name, "sha256": hash_file(target_chain)})
+    write_json(trust_path, trust)
+    return {"manifest": manifest_path, "signature": signature_path, "trust": trust_path}
+
+
+def verify_artifact_bundle(output_dir: Path, public_key_path: Path) -> dict:
+    manifest_path = output_dir / "artifact_manifest.json"
+    signature_path = output_dir / "artifact_manifest.sig"
+    trust_path = output_dir / "artifact_trust.json"
+    result = {
+        "manifest_present": manifest_path.exists(),
+        "signature_present": signature_path.exists(),
+        "trust_present": trust_path.exists(),
+        "signature_valid": False,
+        "file_hashes_match": False,
+        "trust_public_key_match": False,
+    }
+    if not manifest_path.exists() or not signature_path.exists():
+        result["all_pass"] = False
+        return result
+    completed = subprocess.run(
+        [
+            "openssl", "dgst", "-sha256", "-verify", str(public_key_path),
+            "-signature", str(signature_path), str(manifest_path),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    result["signature_valid"] = completed.returncode == 0
+    manifest = read_json(manifest_path)
+    result["file_hashes_match"] = all(
+        (output_dir / item["path"]).exists() and hash_file(output_dir / item["path"]) == item["sha256"]
+        for item in manifest.get("files", [])
+    )
+    if trust_path.exists():
+        trust = read_json(trust_path)
+        result["trust_public_key_match"] = trust.get("public_key_sha256") == hash_file(public_key_path)
+    result["all_pass"] = result["signature_valid"] and result["file_hashes_match"] and (not result["trust_present"] or result["trust_public_key_match"])
+    return result
 
 
 def run_benchmark_suite(validation_dir: Path, working_root: Path, profile: str = "heuristic") -> dict:
