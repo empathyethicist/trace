@@ -221,6 +221,7 @@ TRACE is designed around the following controls:
 - Roadmap: `docs/ROADMAP.md`
 - Validation posture: `docs/VALIDATION.md`
 - Benchmark governance: `docs/BENCHMARK_GOVERNANCE.md`
+- Release checklist: `docs/RELEASE_CHECKLIST.md`
 - Evidence package specification: `docs/EVIDENCE_PACKAGE_SPEC.md`
 - Architecture: `docs/ARCHITECTURE.md`
 - Threat model: `docs/THREAT_MODEL.md`

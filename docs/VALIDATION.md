@@ -140,12 +140,15 @@ The benchmark workflow can also emit history snapshots such as:
 - `benchmark_heuristic_latest.json`
 - `benchmark_hosted_latest.json`
 - `benchmark_compare_heuristic_vs_hosted_latest.json`
+- `benchmark_heuristic_latest_<timestamp>.json`
+- `benchmark_hosted_latest_<timestamp>.json`
 
-This creates a lightweight baseline history for later regression review.
+This creates both a stable latest pointer and an immutable dated record for later regression review.
 
 Governance expectations for benchmark acceptance and release review are defined in:
 
 - `docs/BENCHMARK_GOVERNANCE.md`
+- `docs/RELEASE_CHECKLIST.md`
 
 ## What is not yet fully validated
 

@@ -191,14 +191,17 @@ def hash_file(path: Path) -> str:
 def write_artifact_history_snapshot(payload: dict, history_dir: Path, label: str) -> Path:
     history_dir.mkdir(parents=True, exist_ok=True)
     safe_label = label.replace("/", "_").replace(" ", "_")
+    timestamp = utc_now_iso().replace(":", "-").replace("+00:00", "Z")
     snapshot = {
         "label": safe_label,
         "generated_at": utc_now_iso(),
         "payload": payload,
     }
-    snapshot_path = history_dir / f"{safe_label}.json"
-    write_json(snapshot_path, snapshot)
-    return snapshot_path
+    latest_path = history_dir / f"{safe_label}.json"
+    dated_path = history_dir / f"{safe_label}_{timestamp}.json"
+    write_json(latest_path, snapshot)
+    write_json(dated_path, snapshot)
+    return {"latest": latest_path, "dated": dated_path}
 
 
 def sign_artifact_bundle(

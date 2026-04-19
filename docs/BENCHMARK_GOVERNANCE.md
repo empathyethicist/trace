@@ -72,13 +72,13 @@ Recommended review flow:
 This governance process still has three important limitations:
 
 - the hosted profile currently uses a mock-hosted path rather than live provider benchmarking
-- benchmark history uses latest-snapshot naming rather than immutable dated series by default
+- benchmark history currently writes both latest-snapshot and dated-snapshot artifacts, but release policy does not yet enforce retention duration
 - timing thresholds are recorded but not yet enforced by policy
 
 ## Immediate next governance upgrades
 
 The next governance improvements should be:
 
-- immutable dated benchmark history snapshots
 - explicit timing regression thresholds
 - live-provider hosted benchmark criteria separate from mock-hosted criteria
+- release-tag integration between benchmark artifacts and public version markers

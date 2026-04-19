@@ -276,7 +276,9 @@ commonName = supplied
             payload = read_json(artifacts["json"])
             self.assertEqual(payload["total_fixtures"], 5)
             snapshot = write_artifact_history_snapshot(summary, root / "history", "benchmark_heuristic_latest")
-            self.assertTrue(snapshot.exists())
+            self.assertTrue(snapshot["latest"].exists())
+            self.assertTrue(snapshot["dated"].exists())
+            self.assertNotEqual(snapshot["latest"], snapshot["dated"])
 
     def test_benchmark_comparison_artifact_export(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

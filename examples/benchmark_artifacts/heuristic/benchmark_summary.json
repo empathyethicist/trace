@@ -4,7 +4,7 @@
   "passed_fixtures": 5,
   "failed_fixtures": 0,
   "pass_rate": 100.0,
-  "total_elapsed_seconds": 0.0033,
+  "total_elapsed_seconds": 0.0034,
   "results": [
     {
       "reference_name": "companion_incident.json",
@@ -49,7 +49,7 @@
       "vulnerability_agreement": 100.0,
       "findings_match": true,
       "pass_thresholds": true,
-      "elapsed_seconds": 0.0005
+      "elapsed_seconds": 0.0006
     }
   ]
 }

@@ -34,7 +34,8 @@ The benchmark comparison demonstrates:
 
 The benchmark history demonstrates:
 
-- timestamped latest-snapshot records for heuristic, hosted, and comparison runs
+- latest-snapshot records for heuristic, hosted, and comparison runs
+- immutable dated snapshot records for the same benchmark families
 - a lightweight baseline for benchmark regression tracking
 
 These artifacts are illustrative sample outputs, not live case materials.

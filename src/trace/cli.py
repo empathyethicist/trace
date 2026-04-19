@@ -213,7 +213,8 @@ def main() -> None:
                 print(f"[BENCHMARK] Artifact verification pass: {verified['all_pass']}")
         if args.history_dir:
             snapshot = write_artifact_history_snapshot(summary, Path(args.history_dir), f"benchmark_{args.profile}_latest")
-            print(f"[BENCHMARK] History snapshot: {snapshot}")
+            print(f"[BENCHMARK] History snapshot latest: {snapshot['latest']}")
+            print(f"[BENCHMARK] History snapshot dated: {snapshot['dated']}")
         return
 
     if args.command == "benchmark-compare":
@@ -259,7 +260,8 @@ def main() -> None:
                 Path(args.history_dir),
                 f"benchmark_compare_{args.baseline_profile}_vs_{args.candidate_profile}_latest",
             )
-            print(f"[BENCHMARK-COMPARE] History snapshot: {snapshot}")
+            print(f"[BENCHMARK-COMPARE] History snapshot latest: {snapshot['latest']}")
+            print(f"[BENCHMARK-COMPARE] History snapshot dated: {snapshot['dated']}")
         return
 
     if args.command == "verify-package":
