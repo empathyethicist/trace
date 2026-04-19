@@ -125,6 +125,13 @@ The benchmark command can emit:
 
 This allows TRACE benchmark runs to be preserved as inspectable artifacts rather than only terminal output.
 
+The companion comparison workflow can emit:
+
+- `benchmark_comparison.json`
+- `benchmark_comparison.md`
+
+This supports explicit drift review between heuristic and hosted benchmark profiles.
+
 ## What is not yet fully validated
 
 The following are still required for stronger production confidence:

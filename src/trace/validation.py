@@ -98,12 +98,85 @@ def render_benchmark_markdown(summary: dict) -> str:
     return "".join(lines)
 
 
+def compare_benchmark_summaries(baseline: dict, candidate: dict) -> dict:
+    baseline_results = {item["reference_name"]: item for item in baseline["results"]}
+    candidate_results = {item["reference_name"]: item for item in candidate["results"]}
+    references = sorted(set(baseline_results) & set(candidate_results))
+    comparisons = []
+    drift_count = 0
+    for reference_name in references:
+        left = baseline_results[reference_name]
+        right = candidate_results[reference_name]
+        behavior_delta = round(right["behavioral_agreement"] - left["behavioral_agreement"], 4)
+        vulnerability_delta = round(right["vulnerability_agreement"] - left["vulnerability_agreement"], 4)
+        findings_changed = right["findings_match"] != left["findings_match"]
+        threshold_changed = right["pass_thresholds"] != left["pass_thresholds"]
+        drift_detected = (
+            behavior_delta != 0.0
+            or vulnerability_delta != 0.0
+            or findings_changed
+            or threshold_changed
+        )
+        if drift_detected:
+            drift_count += 1
+        comparisons.append(
+            {
+                "reference_name": reference_name,
+                "baseline_profile": baseline["profile"],
+                "candidate_profile": candidate["profile"],
+                "behavioral_delta": behavior_delta,
+                "vulnerability_delta": vulnerability_delta,
+                "findings_changed": findings_changed,
+                "threshold_changed": threshold_changed,
+                "drift_detected": drift_detected,
+                "baseline_pass": left["pass_thresholds"],
+                "candidate_pass": right["pass_thresholds"],
+            }
+        )
+    return {
+        "baseline_profile": baseline["profile"],
+        "candidate_profile": candidate["profile"],
+        "references_compared": len(comparisons),
+        "drift_count": drift_count,
+        "drift_free": drift_count == 0,
+        "comparisons": comparisons,
+    }
+
+
+def render_comparison_markdown(comparison: dict) -> str:
+    lines = [
+        "# TRACE Benchmark Comparison\n\n",
+        f"- Baseline Profile: `{comparison['baseline_profile']}`\n",
+        f"- Candidate Profile: `{comparison['candidate_profile']}`\n",
+        f"- References Compared: `{comparison['references_compared']}`\n",
+        f"- Drift Count: `{comparison['drift_count']}`\n",
+        f"- Drift Free: `{comparison['drift_free']}`\n\n",
+        "| Reference | Behavioral Δ | Vulnerability Δ | Findings Changed | Threshold Changed | Drift |\n",
+        "|---|---:|---:|---|---|---|\n",
+    ]
+    for item in comparison["comparisons"]:
+        lines.append(
+            f"| `{item['reference_name']}` | `{item['behavioral_delta']}` | `{item['vulnerability_delta']}` | "
+            f"`{item['findings_changed']}` | `{item['threshold_changed']}` | `{item['drift_detected']}` |\n"
+        )
+    return "".join(lines)
+
+
 def write_benchmark_artifacts(summary: dict, output_dir: Path) -> dict:
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "benchmark_summary.json"
     md_path = output_dir / "benchmark_summary.md"
     write_json(json_path, summary)
     md_path.write_text(render_benchmark_markdown(summary), encoding="utf-8")
+    return {"json": json_path, "markdown": md_path}
+
+
+def write_comparison_artifacts(comparison: dict, output_dir: Path) -> dict:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    json_path = output_dir / "benchmark_comparison.json"
+    md_path = output_dir / "benchmark_comparison.md"
+    write_json(json_path, comparison)
+    md_path.write_text(render_comparison_markdown(comparison), encoding="utf-8")
     return {"json": json_path, "markdown": md_path}
 
 

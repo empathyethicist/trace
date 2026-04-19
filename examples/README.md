@@ -5,6 +5,8 @@ This directory contains sample TRACE outputs intended to help reviewers understa
 ## Included example
 
 - `companion_incident_package/`
+- `benchmark_artifacts/`
+- `benchmark_comparison/`
 
 This package was generated from the repository validation fixture using the current TRACE pipeline and demonstrates:
 
@@ -14,5 +16,17 @@ This package was generated from the repository validation fixture using the curr
 - audit logging
 - configuration and prompt-template preservation
 - package manifest structure
+
+The benchmark artifacts demonstrate:
+
+- heuristic-profile benchmark summary output
+- hosted-profile benchmark summary output
+- JSON and Markdown benchmark artifacts suitable for review or archival
+
+The benchmark comparison demonstrates:
+
+- profile-to-profile drift analysis
+- zero-drift reporting across the bundled validation corpus
+- JSON and Markdown comparison artifacts for reproducibility
 
 These artifacts are illustrative sample outputs, not live case materials.

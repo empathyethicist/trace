@@ -1,0 +1,55 @@
+{
+  "profile": "heuristic",
+  "total_fixtures": 5,
+  "passed_fixtures": 5,
+  "failed_fixtures": 0,
+  "pass_rate": 100.0,
+  "total_elapsed_seconds": 0.0035,
+  "results": [
+    {
+      "reference_name": "companion_incident.json",
+      "profile": "heuristic",
+      "behavioral_agreement": 100.0,
+      "vulnerability_agreement": 100.0,
+      "findings_match": true,
+      "pass_thresholds": true,
+      "elapsed_seconds": 0.0012
+    },
+    {
+      "reference_name": "reference_benign_case.json",
+      "profile": "heuristic",
+      "behavioral_agreement": 100.0,
+      "vulnerability_agreement": 100.0,
+      "findings_match": true,
+      "pass_thresholds": true,
+      "elapsed_seconds": 0.0004
+    },
+    {
+      "reference_name": "reference_long_case.json",
+      "profile": "heuristic",
+      "behavioral_agreement": 100.0,
+      "vulnerability_agreement": 100.0,
+      "findings_match": true,
+      "pass_thresholds": true,
+      "elapsed_seconds": 0.0008
+    },
+    {
+      "reference_name": "reference_mixed_case.json",
+      "profile": "heuristic",
+      "behavioral_agreement": 100.0,
+      "vulnerability_agreement": 100.0,
+      "findings_match": true,
+      "pass_thresholds": true,
+      "elapsed_seconds": 0.0005
+    },
+    {
+      "reference_name": "reference_noisy_case.json",
+      "profile": "heuristic",
+      "behavioral_agreement": 100.0,
+      "vulnerability_agreement": 100.0,
+      "findings_match": true,
+      "pass_thresholds": true,
+      "elapsed_seconds": 0.0006
+    }
+  ]
+}

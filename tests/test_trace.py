@@ -17,7 +17,13 @@ from trace.irr import cohen_kappa, compute_irr, import_second_coder, krippendorf
 from trace.report import compute_findings, export_case_report, verify_evidence_package
 from trace.report import sign_manifest, verify_manifest_signature, verify_signing_certificate
 from trace.storage import read_json
-from trace.validation import run_benchmark_suite, run_validation, write_benchmark_artifacts
+from trace.validation import (
+    compare_benchmark_summaries,
+    run_benchmark_suite,
+    run_validation,
+    write_benchmark_artifacts,
+    write_comparison_artifacts,
+)
 
 
 FIXTURE = Path(__file__).resolve().parent.parent / "validation" / "companion_incident.json"
@@ -266,6 +272,19 @@ commonName = supplied
             self.assertIn("# TRACE Benchmark Summary", markdown)
             payload = read_json(artifacts["json"])
             self.assertEqual(payload["total_fixtures"], 5)
+
+    def test_benchmark_comparison_artifact_export(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            baseline = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "heuristic", profile="heuristic")
+            candidate = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "hosted", profile="hosted")
+            comparison = compare_benchmark_summaries(baseline, candidate)
+            self.assertTrue(comparison["drift_free"])
+            artifacts = write_comparison_artifacts(comparison, root / "compare_artifacts")
+            self.assertTrue(artifacts["json"].exists())
+            self.assertTrue(artifacts["markdown"].exists())
+            markdown = artifacts["markdown"].read_text(encoding="utf-8")
+            self.assertIn("# TRACE Benchmark Comparison", markdown)
 
     def test_long_transcript_pipeline(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

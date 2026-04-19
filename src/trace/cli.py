@@ -14,7 +14,13 @@ from trace.report import (
     verify_manifest_signature,
     verify_signing_certificate,
 )
-from trace.validation import run_benchmark_suite, run_validation, write_benchmark_artifacts
+from trace.validation import (
+    compare_benchmark_summaries,
+    run_benchmark_suite,
+    run_validation,
+    write_benchmark_artifacts,
+    write_comparison_artifacts,
+)
 
 
 DEFAULT_ROOT = Path.cwd() / ".trace_data"
@@ -67,6 +73,13 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark.add_argument("--root", default=str(DEFAULT_ROOT))
     benchmark.add_argument("--profile", default="heuristic", choices=["heuristic", "hosted"])
     benchmark.add_argument("--output-dir")
+
+    compare = sub.add_parser("benchmark-compare")
+    compare.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
+    compare.add_argument("--root", default=str(DEFAULT_ROOT))
+    compare.add_argument("--baseline-profile", default="heuristic", choices=["heuristic", "hosted"])
+    compare.add_argument("--candidate-profile", default="hosted", choices=["heuristic", "hosted"])
+    compare.add_argument("--output-dir")
 
     verify = sub.add_parser("verify-package")
     verify.add_argument("--package", required=True)
@@ -169,6 +182,31 @@ def main() -> None:
             artifacts = write_benchmark_artifacts(summary, Path(args.output_dir))
             print(f"[BENCHMARK] JSON artifact: {artifacts['json']}")
             print(f"[BENCHMARK] Markdown artifact: {artifacts['markdown']}")
+        return
+
+    if args.command == "benchmark-compare":
+        baseline = run_benchmark_suite(Path(args.validation_dir), Path(args.root) / args.baseline_profile, profile=args.baseline_profile)
+        candidate = run_benchmark_suite(Path(args.validation_dir), Path(args.root) / args.candidate_profile, profile=args.candidate_profile)
+        comparison = compare_benchmark_summaries(baseline, candidate)
+        print(f"[BENCHMARK-COMPARE] Baseline: {comparison['baseline_profile']}")
+        print(f"[BENCHMARK-COMPARE] Candidate: {comparison['candidate_profile']}")
+        print(f"[BENCHMARK-COMPARE] References compared: {comparison['references_compared']}")
+        print(f"[BENCHMARK-COMPARE] Drift count: {comparison['drift_count']}")
+        print(f"[BENCHMARK-COMPARE] Drift free: {comparison['drift_free']}")
+        for item in comparison["comparisons"]:
+            print(
+                "[BENCHMARK-COMPARE] "
+                f"{item['reference_name']}: "
+                f"behavior_delta={item['behavioral_delta']} "
+                f"vulnerability_delta={item['vulnerability_delta']} "
+                f"findings_changed={item['findings_changed']} "
+                f"threshold_changed={item['threshold_changed']} "
+                f"drift={item['drift_detected']}"
+            )
+        if args.output_dir:
+            artifacts = write_comparison_artifacts(comparison, Path(args.output_dir))
+            print(f"[BENCHMARK-COMPARE] JSON artifact: {artifacts['json']}")
+            print(f"[BENCHMARK-COMPARE] Markdown artifact: {artifacts['markdown']}")
         return
 
     if args.command == "verify-package":
