@@ -121,7 +121,12 @@ Stores inter-rater reliability outputs when dual-coder workflows are used.
 
 ### `forensic_report.json`, `forensic_report.md`, and `forensic_report.pdf`
 
-Provide machine-readable, Markdown, and PDF report outputs, including override summary counts.
+Provide machine-readable, Markdown, and PDF report outputs, including:
+
+- case overview metrics
+- findings summary metrics
+- review summary counts
+- artifact inventory references
 
 ### `audit_log.jsonl`
 

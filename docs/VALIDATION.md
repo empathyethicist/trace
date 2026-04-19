@@ -87,6 +87,7 @@ The parser fixtures provide:
 - court-style transcript samples
 - AXIOM-style JSON message samples
 - UFED-style XML message samples
+- malformed export samples for parser failure-path testing
 
 Run:
 

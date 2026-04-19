@@ -172,18 +172,21 @@ def parse_ufed_xml_records(path: Path) -> list[dict]:
         speaker = attrib.get("speaker") or attrib.get("author") or attrib.get("sender")
         timestamp = attrib.get("timestamp") or attrib.get("time")
         content = attrib.get("content") or attrib.get("body") or (node.text or "").strip()
+        if content is None:
+            content = ""
         if not speaker or not str(content).strip():
             children = {child.tag.lower().split("}")[-1]: (child.text or "").strip() for child in list(node)}
             speaker = speaker or children.get("speaker") or children.get("author") or children.get("sender")
             timestamp = timestamp or children.get("timestamp") or children.get("time")
-            content = str(content).strip() or children.get("content") or children.get("body") or children.get("message")
-        if speaker and str(content).strip():
+            content = (str(content).strip() if content is not None else "") or children.get("content") or children.get("body") or children.get("message") or ""
+        normalized_content = str(content).strip() if content is not None else ""
+        if speaker and normalized_content:
             rows.append(
                 {
                     "id": len(rows) + 1,
                     "speaker": normalize_speaker(str(speaker)),
                     "timestamp": timestamp,
-                    "content": str(content).strip(),
+                    "content": normalized_content,
                     "classification": None,
                     "vulnerability": None,
                 }

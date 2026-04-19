@@ -46,6 +46,14 @@ class TraceTests(unittest.TestCase):
         self.assertEqual(parse_axiom_json_records(axiom)[2]["speaker"], "user")
         self.assertEqual(parse_ufed_xml_records(ufed)[3]["speaker"], "system")
 
+    def test_parse_malformed_formats_raise(self) -> None:
+        invalid_axiom = PARSER_FIXTURE_ROOT / "invalid_axiom_missing_messages.json"
+        invalid_ufed = PARSER_FIXTURE_ROOT / "invalid_ufed_empty.xml"
+        with self.assertRaises(ValueError):
+            parse_axiom_json_records(invalid_axiom)
+        with self.assertRaises(ValueError):
+            parse_ufed_xml_records(invalid_ufed)
+
     def test_ingest_supported_parser_formats(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "cases"
@@ -92,12 +100,16 @@ class TraceTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            sign_manifest(package, private_key, public_key, "TRACE test signer")
+            certificate_chain = root / "trace_chain.pem"
+            certificate_chain.write_text("TEST CERTIFICATE CHAIN PLACEHOLDER\n", encoding="utf-8")
+            sign_manifest(package, private_key, public_key, "TRACE test signer", [certificate_chain])
             verification = verify_manifest_signature(package, public_key)
             self.assertTrue(verification["all_pass"])
             trust_metadata = read_json(package / "trust_metadata.json")
             self.assertEqual(trust_metadata["signer_label"], "TRACE test signer")
             self.assertEqual(trust_metadata["public_key_path"], "trace_public.pem")
+            self.assertEqual(len(trust_metadata["certificate_chain"]), 1)
+            self.assertEqual(trust_metadata["certificate_chain"][0]["path"], "trace_chain.pem")
 
     def test_mock_provider_classification(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -146,8 +158,9 @@ class TraceTests(unittest.TestCase):
             classify_case(root / "cases" / "LONG-CASE", "tester", window_size=8)
             package = export_case_report(root / "cases" / "LONG-CASE", root / "out", "tester")
             report_md = (package / "forensic_report.md").read_text(encoding="utf-8")
-            self.assertIn("Inappropriate Response Rate", report_md)
-            self.assertIn("Overridden Classifications", report_md)
+            self.assertIn("## Case Overview", report_md)
+            self.assertIn("## Findings Summary", report_md)
+            self.assertIn("## Artifact Inventory", report_md)
             findings = read_json(package / "correlation_analysis.json")
             self.assertGreaterEqual(findings["inappropriate_response_rate"], 80.0)
 

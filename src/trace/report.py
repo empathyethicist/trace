@@ -148,16 +148,31 @@ def hash_package_contents(package_dir: Path) -> str:
 
 
 def write_report_markdown(case_id: str, findings: dict, override_summary: dict) -> str:
+    top_categories = findings["pattern_distribution"]["distribution"]
+    if top_categories:
+        category_summary = ", ".join(f"{key}: {value}" for key, value in sorted(top_categories.items()))
+    else:
+        category_summary = "No harmful categories identified"
     lines = [
         f"# TRACE Forensic Report\n\n"
+        "## Case Overview\n\n"
         f"- Case ID: `{case_id}`\n"
+        f"- Correlation Pairs Reviewed: `{len(findings['correlation_pairs'])}`\n"
+        f"- Crisis Pairs Reviewed: `{len(findings['crisis_pairs'])}`\n"
+        "\n## Findings Summary\n\n"
         f"- Inappropriate Response Rate: `{findings['inappropriate_response_rate']}%`\n"
         f"- Crisis Failure Rate: `{findings['crisis_failure_rate']}%`\n"
         f"- Pattern Systematic: `{findings['pattern_distribution']['systematic']}`\n"
         f"- Concentration Index: `{findings['pattern_distribution']['concentration_index']}`\n"
+        f"- Harmful Category Distribution: `{category_summary}`\n"
+        "\n## Review Summary\n\n"
         f"- Accepted Classifications: `{override_summary['accepted_count']}`\n"
         f"- Flagged Classifications: `{override_summary['flagged_count']}`\n"
         f"- Overridden Classifications: `{override_summary['overridden_count']}`\n"
+        "\n## Artifact Inventory\n\n"
+        "- Core artifacts: `manifest.json`, `verification.json`, `forensic_report.json`, `forensic_report.pdf`\n"
+        "- Transcript artifacts: `source_transcript.json`, `classified_transcript.json`, `classified_transcript.csv`\n"
+        "- Review artifacts: `override_summary.json`, `irr_statistics.json`, `audit_log.jsonl`\n"
     ]
     if override_summary["overridden_messages"]:
         lines.append("\n## Override Summary\n\n")
@@ -191,16 +206,31 @@ def _wrap_pdf_text(line: str, width: int = 88) -> list[str]:
 
 
 def write_report_pdf(path: Path, case_id: str, findings: dict, override_summary: dict) -> None:
+    top_categories = findings["pattern_distribution"]["distribution"]
+    if top_categories:
+        category_summary = ", ".join(f"{key}: {value}" for key, value in sorted(top_categories.items()))
+    else:
+        category_summary = "No harmful categories identified"
     report_lines = [
         "TRACE Forensic Report",
+        "Case Overview",
         f"Case ID: {case_id}",
+        f"Correlation Pairs Reviewed: {len(findings['correlation_pairs'])}",
+        f"Crisis Pairs Reviewed: {len(findings['crisis_pairs'])}",
+        "Findings Summary",
         f"Inappropriate Response Rate: {findings['inappropriate_response_rate']}%",
         f"Crisis Failure Rate: {findings['crisis_failure_rate']}%",
         f"Pattern Systematic: {findings['pattern_distribution']['systematic']}",
         f"Concentration Index: {findings['pattern_distribution']['concentration_index']}",
+        f"Harmful Category Distribution: {category_summary}",
+        "Review Summary",
         f"Accepted Classifications: {override_summary['accepted_count']}",
         f"Flagged Classifications: {override_summary['flagged_count']}",
         f"Overridden Classifications: {override_summary['overridden_count']}",
+        "Artifact Inventory",
+        "Core artifacts: manifest.json, verification.json, forensic_report.json, forensic_report.pdf",
+        "Transcript artifacts: source_transcript.json, classified_transcript.json, classified_transcript.csv",
+        "Review artifacts: override_summary.json, irr_statistics.json, audit_log.jsonl",
     ]
     for item in override_summary["overridden_messages"]:
         report_lines.append(
@@ -285,11 +315,31 @@ def verify_manifest_signature(package_dir: Path, public_key_path: Path) -> dict:
         trust = read_json(trust_metadata_path)
         result["trust_public_key_match"] = trust.get("public_key_sha256") == hash_path(public_key_path)
         result["signer_label"] = trust.get("signer_label")
+        chain_entries = trust.get("certificate_chain", [])
+        missing_chain = [entry["path"] for entry in chain_entries if not (package_dir / entry["path"]).exists()]
+        mismatched_chain = [
+            entry["path"]
+            for entry in chain_entries
+            if (package_dir / entry["path"]).exists() and entry.get("sha256") != hash_path(package_dir / entry["path"])
+        ]
+        result["trust_chain_present"] = not missing_chain
+        result["trust_chain_hash_match"] = not mismatched_chain
+        result["missing_chain_entries"] = missing_chain
+        result["mismatched_chain_entries"] = mismatched_chain
     else:
         result["trust_public_key_match"] = False
+        result["trust_chain_present"] = False
+        result["trust_chain_hash_match"] = False
+        result["missing_chain_entries"] = []
+        result["mismatched_chain_entries"] = []
     result["all_pass"] = result["signature_present"] and result["public_key_present"] and result["signature_valid"]
     if result["trust_metadata_present"]:
-        result["all_pass"] = result["all_pass"] and result["trust_public_key_match"]
+        result["all_pass"] = (
+            result["all_pass"]
+            and result["trust_public_key_match"]
+            and result["trust_chain_present"]
+            and result["trust_chain_hash_match"]
+        )
     return result
 
 
@@ -309,10 +359,13 @@ def build_trust_metadata(
         "certificate_chain": [],
     }
     for chain_path in certificate_chain_paths or []:
+        target_path = package_dir / chain_path.name
+        if chain_path.resolve() != target_path.resolve():
+            target_path.write_bytes(chain_path.read_bytes())
         metadata["certificate_chain"].append(
             {
                 "path": chain_path.name,
-                "sha256": hash_path(chain_path),
+                "sha256": hash_path(target_path),
             }
         )
     write_json(package_dir / "trust_metadata.json", metadata)

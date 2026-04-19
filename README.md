@@ -197,6 +197,7 @@ TRACE is designed around the following controls:
 - examiner override rationale preservation in classified output
 - detached signature verification for signed manifests
 - signer trust metadata preserved alongside manifest signatures
+- malformed parser fixtures included for regression coverage
 
 ## Project policies
 
