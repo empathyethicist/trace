@@ -22,6 +22,7 @@ from trace.validation import run_validation
 
 FIXTURE = Path(__file__).resolve().parent.parent / "validation" / "companion_incident.json"
 BENIGN_FIXTURE = Path(__file__).resolve().parent.parent / "validation" / "reference_benign_case.json"
+LONG_FIXTURE = Path(__file__).resolve().parent.parent / "validation" / "reference_long_case.json"
 PARSER_FIXTURE_ROOT = Path(__file__).resolve().parent.parent / "validation" / "parsers"
 
 
@@ -91,9 +92,12 @@ class TraceTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            sign_manifest(package, private_key)
+            sign_manifest(package, private_key, public_key, "TRACE test signer")
             verification = verify_manifest_signature(package, public_key)
             self.assertTrue(verification["all_pass"])
+            trust_metadata = read_json(package / "trust_metadata.json")
+            self.assertEqual(trust_metadata["signer_label"], "TRACE test signer")
+            self.assertEqual(trust_metadata["public_key_path"], "trace_public.pem")
 
     def test_mock_provider_classification(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -134,6 +138,18 @@ class TraceTests(unittest.TestCase):
             self.assertTrue(result.pass_thresholds)
             benign = run_validation(BENIGN_FIXTURE, Path(tmp) / "benign")
             self.assertTrue(benign.pass_thresholds)
+
+    def test_long_transcript_pipeline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ingest_case(LONG_FIXTURE, "LONG-CASE", "tester", "json", root / "cases")
+            classify_case(root / "cases" / "LONG-CASE", "tester", window_size=8)
+            package = export_case_report(root / "cases" / "LONG-CASE", root / "out", "tester")
+            report_md = (package / "forensic_report.md").read_text(encoding="utf-8")
+            self.assertIn("Inappropriate Response Rate", report_md)
+            self.assertIn("Overridden Classifications", report_md)
+            findings = read_json(package / "correlation_analysis.json")
+            self.assertGreaterEqual(findings["inappropriate_response_rate"], 80.0)
 
 
 if __name__ == "__main__":

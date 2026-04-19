@@ -20,6 +20,7 @@ TRACE currently exports the following artifacts:
 evidence_package/
   manifest.json
   manifest.sig
+  trust_metadata.json
   verification.json
   override_summary.json
   forensic_report.pdf
@@ -60,6 +61,16 @@ The package hash is computed over exported package contents while excluding `ver
 ### `manifest.sig`
 
 Optional detached signature generated for `manifest.json`. TRACE can verify this signature against a supplied public key through the CLI.
+
+### `trust_metadata.json`
+
+Stores signing-context metadata including:
+
+- signature algorithm
+- signer label
+- public key filename
+- public key hash
+- optional certificate-chain file hashes
 
 ### `verification.json`
 
@@ -140,5 +151,6 @@ The current package format does not yet include:
 
 - authenticated timestamping or external attestation
 - embedded certificate-chain handling for signed manifests
+- certificate revocation or trust-store evaluation
 
 Those are planned future enhancements rather than current guarantees.

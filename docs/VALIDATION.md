@@ -60,6 +60,7 @@ TRACE ships with:
 
 - `validation/companion_incident.json`
 - `validation/reference_benign_case.json`
+- `validation/reference_long_case.json`
 - `validation/parsers/`
 
 This fixture provides:
@@ -75,6 +76,12 @@ The benign fixture provides:
 - expected zero-harm findings
 - a guard against over-escalation in vulnerability classification
 
+The long-form fixture provides:
+
+- a longer distress-oriented interaction
+- repeated elevated-vulnerability states across multiple windows
+- a regression check for report generation under denser transcripts
+
 The parser fixtures provide:
 
 - court-style transcript samples
@@ -86,6 +93,7 @@ Run:
 ```bash
 trace validate --reference ./validation/companion_incident.json
 trace validate --reference ./validation/reference_benign_case.json
+trace validate --reference ./validation/reference_long_case.json
 ```
 
 ## What is not yet fully validated

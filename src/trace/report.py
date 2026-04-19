@@ -173,6 +173,23 @@ def _pdf_escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
 
+def _wrap_pdf_text(line: str, width: int = 88) -> list[str]:
+    words = line.split()
+    if not words:
+        return [""]
+    wrapped: list[str] = []
+    current = words[0]
+    for word in words[1:]:
+        candidate = f"{current} {word}"
+        if len(candidate) <= width:
+            current = candidate
+        else:
+            wrapped.append(current)
+            current = word
+    wrapped.append(current)
+    return wrapped
+
+
 def write_report_pdf(path: Path, case_id: str, findings: dict, override_summary: dict) -> None:
     report_lines = [
         "TRACE Forensic Report",
@@ -189,16 +206,19 @@ def write_report_pdf(path: Path, case_id: str, findings: dict, override_summary:
         report_lines.append(
             f"Override #{item['message_id']} ({item['speaker']}): {item['override_rationale'] or 'No rationale provided'}"
         )
-    lines = [
-        "BT",
-    ]
-    y_offset = 760
+    lines = ["BT", "/F1 18 Tf 72 760 Td"]
+    first_line = True
     for index, line in enumerate(report_lines):
         font_size = 18 if index == 0 else 12
+        wrapped = _wrap_pdf_text(line, width=72 if font_size == 18 else 92)
+        for wrapped_line in wrapped:
+            if first_line:
+                lines.append(f"({ _pdf_escape(wrapped_line) }) Tj")
+                first_line = False
+            else:
+                lines.append(f"/F1 {font_size} Tf 0 -18 Td ({_pdf_escape(wrapped_line)}) Tj")
         if index == 0:
-            lines.append(f"/F1 {font_size} Tf 72 {y_offset} Td ({_pdf_escape(line)}) Tj")
-        else:
-            lines.append(f"/F1 {font_size} Tf 0 -18 Td ({_pdf_escape(line)}) Tj")
+            lines.append("/F1 12 Tf 0 -10 Td () Tj")
     lines.append("ET")
     stream = "\n".join(lines).encode("latin-1", errors="replace")
     objects = []
@@ -234,9 +254,11 @@ def verify_evidence_package(package_dir: Path) -> dict:
 
 def verify_manifest_signature(package_dir: Path, public_key_path: Path) -> dict:
     signature_path = package_dir / "manifest.sig"
+    trust_metadata_path = package_dir / "trust_metadata.json"
     result = {
         "signature_present": signature_path.exists(),
         "public_key_present": public_key_path.exists(),
+        "trust_metadata_present": trust_metadata_path.exists(),
         "signature_valid": False,
     }
     if not result["signature_present"] or not result["public_key_present"]:
@@ -259,11 +281,51 @@ def verify_manifest_signature(package_dir: Path, public_key_path: Path) -> dict:
     result["signature_valid"] = completed.returncode == 0
     result["stdout"] = completed.stdout.strip()
     result["stderr"] = completed.stderr.strip()
+    if trust_metadata_path.exists():
+        trust = read_json(trust_metadata_path)
+        result["trust_public_key_match"] = trust.get("public_key_sha256") == hash_path(public_key_path)
+        result["signer_label"] = trust.get("signer_label")
+    else:
+        result["trust_public_key_match"] = False
     result["all_pass"] = result["signature_present"] and result["public_key_present"] and result["signature_valid"]
+    if result["trust_metadata_present"]:
+        result["all_pass"] = result["all_pass"] and result["trust_public_key_match"]
     return result
 
 
-def sign_manifest(package_dir: Path, private_key_path: Path) -> Path:
+def build_trust_metadata(
+    package_dir: Path,
+    public_key_path: Path | None = None,
+    signer_label: str | None = None,
+    certificate_chain_paths: list[Path] | None = None,
+) -> dict:
+    metadata = {
+        "signature_algorithm": "RSA-SHA256",
+        "signer_label": signer_label or "unspecified",
+        "manifest_path": "manifest.json",
+        "signature_path": "manifest.sig",
+        "public_key_path": public_key_path.name if public_key_path else None,
+        "public_key_sha256": hash_path(public_key_path) if public_key_path and public_key_path.exists() else None,
+        "certificate_chain": [],
+    }
+    for chain_path in certificate_chain_paths or []:
+        metadata["certificate_chain"].append(
+            {
+                "path": chain_path.name,
+                "sha256": hash_path(chain_path),
+            }
+        )
+    write_json(package_dir / "trust_metadata.json", metadata)
+    return metadata
+
+
+def sign_manifest(
+    package_dir: Path,
+    private_key_path: Path,
+    public_key_path: Path | None = None,
+    signer_label: str | None = None,
+    certificate_chain_paths: list[Path] | None = None,
+) -> Path:
     signature_path = package_dir / "manifest.sig"
     subprocess.run(
         [
@@ -274,6 +336,7 @@ def sign_manifest(package_dir: Path, private_key_path: Path) -> Path:
         capture_output=True,
         text=True,
     )
+    build_trust_metadata(package_dir, public_key_path, signer_label, certificate_chain_paths)
     return signature_path
 
 

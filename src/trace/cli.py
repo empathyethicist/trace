@@ -61,6 +61,9 @@ def build_parser() -> argparse.ArgumentParser:
     sign = sub.add_parser("sign-package")
     sign.add_argument("--package", required=True)
     sign.add_argument("--private-key", required=True)
+    sign.add_argument("--public-key")
+    sign.add_argument("--signer-label")
+    sign.add_argument("--certificate-chain", action="append", default=[])
 
     verify_sig = sub.add_parser("verify-signature")
     verify_sig.add_argument("--package", required=True)
@@ -129,7 +132,13 @@ def main() -> None:
         return
 
     if args.command == "sign-package":
-        path = sign_manifest(Path(args.package), Path(args.private_key))
+        path = sign_manifest(
+            Path(args.package),
+            Path(args.private_key),
+            Path(args.public_key) if args.public_key else None,
+            args.signer_label,
+            [Path(item) for item in args.certificate_chain],
+        )
         print(f"[SIGN] Manifest signature written to {path}")
         return
 

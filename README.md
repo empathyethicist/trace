@@ -16,6 +16,7 @@ TRACE is currently a working pre-production implementation with:
 - structured evidence-package export with manifest, verification output, audit log, schema versions, prompt templates, classified transcript outputs, Markdown report output, and PDF report output
 - package verification and manifest signing commands
 - detached manifest signature verification
+- trust metadata for signed packages
 - validation fixtures and automated tests
 
 Current gaps to full production deployment include deeper parser coverage against vendor-native exports, broader adversarial validation fixtures, and additional hardening for high-volume hosted-model execution. See `docs/ROADMAP.md`.
@@ -87,6 +88,7 @@ tests/
 validation/
   companion_incident.json  Reference transcript fixture
   reference_benign_case.json  Baseline benign fixture
+  reference_long_case.json    Long-form distress fixture
   parsers/                   Parser-format reference fixtures
 ```
 
@@ -111,6 +113,7 @@ trace version
 
 ```bash
 trace validate --reference ./validation/companion_incident.json
+trace validate --reference ./validation/reference_long_case.json
 ```
 
 ### End-to-end demo
@@ -193,6 +196,7 @@ TRACE is designed around the following controls:
 - package verification against exported manifest hashes
 - examiner override rationale preservation in classified output
 - detached signature verification for signed manifests
+- signer trust metadata preserved alongside manifest signatures
 
 ## Project policies
 
