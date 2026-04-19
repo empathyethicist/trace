@@ -1,0 +1,79 @@
+{
+  "prefix": "benchmark_compare_heuristic_vs_hosted_latest",
+  "snapshot_count": 1,
+  "snapshots": [
+    {
+      "label": "benchmark_compare_heuristic_vs_hosted_latest",
+      "generated_at": "2026-04-19T14:54:34+00:00",
+      "payload": {
+        "baseline_profile": "heuristic",
+        "candidate_profile": "hosted",
+        "references_compared": 5,
+        "drift_count": 0,
+        "drift_free": true,
+        "comparisons": [
+          {
+            "reference_name": "companion_incident.json",
+            "baseline_profile": "heuristic",
+            "candidate_profile": "hosted",
+            "behavioral_delta": 0.0,
+            "vulnerability_delta": 0.0,
+            "findings_changed": false,
+            "threshold_changed": false,
+            "drift_detected": false,
+            "baseline_pass": true,
+            "candidate_pass": true
+          },
+          {
+            "reference_name": "reference_benign_case.json",
+            "baseline_profile": "heuristic",
+            "candidate_profile": "hosted",
+            "behavioral_delta": 0.0,
+            "vulnerability_delta": 0.0,
+            "findings_changed": false,
+            "threshold_changed": false,
+            "drift_detected": false,
+            "baseline_pass": true,
+            "candidate_pass": true
+          },
+          {
+            "reference_name": "reference_long_case.json",
+            "baseline_profile": "heuristic",
+            "candidate_profile": "hosted",
+            "behavioral_delta": 0.0,
+            "vulnerability_delta": 0.0,
+            "findings_changed": false,
+            "threshold_changed": false,
+            "drift_detected": false,
+            "baseline_pass": true,
+            "candidate_pass": true
+          },
+          {
+            "reference_name": "reference_mixed_case.json",
+            "baseline_profile": "heuristic",
+            "candidate_profile": "hosted",
+            "behavioral_delta": 0.0,
+            "vulnerability_delta": 0.0,
+            "findings_changed": false,
+            "threshold_changed": false,
+            "drift_detected": false,
+            "baseline_pass": true,
+            "candidate_pass": true
+          },
+          {
+            "reference_name": "reference_noisy_case.json",
+            "baseline_profile": "heuristic",
+            "candidate_profile": "hosted",
+            "behavioral_delta": 0.0,
+            "vulnerability_delta": 0.0,
+            "findings_changed": false,
+            "threshold_changed": false,
+            "drift_detected": false,
+            "baseline_pass": true,
+            "candidate_pass": true
+          }
+        ]
+      }
+    }
+  ]
+}

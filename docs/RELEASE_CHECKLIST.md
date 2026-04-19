@@ -7,7 +7,9 @@ This checklist defines the minimum release gate for a public TRACE revision inte
 - Run the full unit and regression suite.
 - Run `trace benchmark --validation-dir ./validation --profile heuristic`.
 - Run `trace benchmark --validation-dir ./validation --profile hosted`.
+- Run `trace benchmark --validation-dir ./validation --profile live-hosted` when release credentials are available.
 - Run `trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile hosted`.
+- Run `trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile live-hosted` when a live-provider run is included in release evidence.
 - Confirm:
   - `failed_fixtures == 0`
   - `pass_rate == 100.0`
@@ -19,12 +21,14 @@ This checklist defines the minimum release gate for a public TRACE revision inte
 - Sign emitted benchmark artifact bundles.
 - Verify signed artifact manifests.
 - Retain both latest and dated history snapshots.
+- Generate and retain history trend summaries for any benchmark series included in the release.
 
 ## Documentation gate
 
 - Update `README.md` if CLI or workflow behavior changed.
 - Update `docs/VALIDATION.md` if benchmark coverage or fixture expectations changed.
 - Update `docs/BENCHMARK_GOVERNANCE.md` if policy or interpretation changed.
+- Update `docs/RELEASE_TAGGING.md` if release-to-artifact linkage changed.
 - Update `examples/` artifacts if externally visible benchmark behavior changed.
 
 ## Review gate
@@ -40,7 +44,12 @@ This checklist defines the minimum release gate for a public TRACE revision inte
 - Record benchmark status at release time.
 - Record whether benchmark comparison was drift-free.
 - Record whether artifacts were signed and archived.
+- Record exact live-provider model identifiers for any `live-hosted` benchmark run.
 
-## Current hosted-profile note
+## Hosted-profile note
 
 The current hosted benchmark profile remains a mock-hosted workflow used for comparison plumbing and benchmark discipline. It is not yet a live-provider benchmark release gate.
+
+## Live-hosted profile note
+
+When credentials are available, `live-hosted` should be treated as the external-provider benchmark profile. It is appropriate for release evidence only when the emitted artifacts record the exact provider-backed model used and the signed benchmark bundle is archived with the release materials.

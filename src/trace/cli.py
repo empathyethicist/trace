@@ -15,7 +15,10 @@ from trace.report import (
     verify_signing_certificate,
 )
 from trace.validation import (
+    benchmark_profile_settings,
+    build_history_trend_summary,
     compare_benchmark_summaries,
+    collect_history_snapshots,
     run_benchmark_suite,
     run_validation,
     sign_artifact_bundle,
@@ -23,6 +26,8 @@ from trace.validation import (
     write_benchmark_artifacts,
     write_comparison_artifacts,
     write_artifact_history_snapshot,
+    write_history_summary,
+    write_history_trend_summary,
 )
 
 
@@ -74,7 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark = sub.add_parser("benchmark")
     benchmark.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
     benchmark.add_argument("--root", default=str(DEFAULT_ROOT))
-    benchmark.add_argument("--profile", default="heuristic", choices=["heuristic", "hosted"])
+    benchmark.add_argument("--profile", default="heuristic", choices=["heuristic", "hosted", "live-hosted"])
     benchmark.add_argument("--output-dir")
     benchmark.add_argument("--history-dir")
     benchmark.add_argument("--sign-private-key")
@@ -86,8 +91,8 @@ def build_parser() -> argparse.ArgumentParser:
     compare = sub.add_parser("benchmark-compare")
     compare.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
     compare.add_argument("--root", default=str(DEFAULT_ROOT))
-    compare.add_argument("--baseline-profile", default="heuristic", choices=["heuristic", "hosted"])
-    compare.add_argument("--candidate-profile", default="hosted", choices=["heuristic", "hosted"])
+    compare.add_argument("--baseline-profile", default="heuristic", choices=["heuristic", "hosted", "live-hosted"])
+    compare.add_argument("--candidate-profile", default="hosted", choices=["heuristic", "hosted", "live-hosted"])
     compare.add_argument("--output-dir")
     compare.add_argument("--history-dir")
     compare.add_argument("--sign-private-key")
@@ -112,6 +117,14 @@ def build_parser() -> argparse.ArgumentParser:
     verify_sig.add_argument("--public-key", required=True)
     verify_sig.add_argument("--ca-file")
     verify_sig.add_argument("--crl-file")
+
+    history = sub.add_parser("benchmark-history")
+    history.add_argument("--history-dir", required=True)
+    history.add_argument("--prefix", required=True)
+
+    trend = sub.add_parser("benchmark-trend")
+    trend.add_argument("--history-dir", required=True)
+    trend.add_argument("--prefix", required=True)
 
     sub.add_parser("version")
     return parser
@@ -175,6 +188,7 @@ def main() -> None:
         return
 
     if args.command == "benchmark":
+        benchmark_profile_settings(args.profile)
         summary = run_benchmark_suite(Path(args.validation_dir), Path(args.root), profile=args.profile)
         print(f"[BENCHMARK] Fixtures: {summary['total_fixtures']}")
         print(f"[BENCHMARK] Passed: {summary['passed_fixtures']}")
@@ -215,9 +229,17 @@ def main() -> None:
             snapshot = write_artifact_history_snapshot(summary, Path(args.history_dir), f"benchmark_{args.profile}_latest")
             print(f"[BENCHMARK] History snapshot latest: {snapshot['latest']}")
             print(f"[BENCHMARK] History snapshot dated: {snapshot['dated']}")
+            history = write_history_summary(Path(args.history_dir), f"benchmark_{args.profile}_latest")
+            print(f"[BENCHMARK] History summary JSON: {history['json']}")
+            print(f"[BENCHMARK] History summary Markdown: {history['markdown']}")
+            trend = write_history_trend_summary(Path(args.history_dir), f"benchmark_{args.profile}_latest")
+            print(f"[BENCHMARK] Trend summary JSON: {trend['json']}")
+            print(f"[BENCHMARK] Trend summary Markdown: {trend['markdown']}")
         return
 
     if args.command == "benchmark-compare":
+        benchmark_profile_settings(args.baseline_profile)
+        benchmark_profile_settings(args.candidate_profile)
         baseline = run_benchmark_suite(Path(args.validation_dir), Path(args.root) / args.baseline_profile, profile=args.baseline_profile)
         candidate = run_benchmark_suite(Path(args.validation_dir), Path(args.root) / args.candidate_profile, profile=args.candidate_profile)
         comparison = compare_benchmark_summaries(baseline, candidate)
@@ -262,6 +284,38 @@ def main() -> None:
             )
             print(f"[BENCHMARK-COMPARE] History snapshot latest: {snapshot['latest']}")
             print(f"[BENCHMARK-COMPARE] History snapshot dated: {snapshot['dated']}")
+            history = write_history_summary(
+                Path(args.history_dir),
+                f"benchmark_compare_{args.baseline_profile}_vs_{args.candidate_profile}_latest",
+            )
+            print(f"[BENCHMARK-COMPARE] History summary JSON: {history['json']}")
+            print(f"[BENCHMARK-COMPARE] History summary Markdown: {history['markdown']}")
+            trend = write_history_trend_summary(
+                Path(args.history_dir),
+                f"benchmark_compare_{args.baseline_profile}_vs_{args.candidate_profile}_latest",
+            )
+            print(f"[BENCHMARK-COMPARE] Trend summary JSON: {trend['json']}")
+            print(f"[BENCHMARK-COMPARE] Trend summary Markdown: {trend['markdown']}")
+        return
+
+    if args.command == "benchmark-history":
+        snapshots = collect_history_snapshots(Path(args.history_dir), args.prefix)
+        summary = write_history_summary(Path(args.history_dir), args.prefix)
+        print(f"[BENCHMARK-HISTORY] Prefix: {args.prefix}")
+        print(f"[BENCHMARK-HISTORY] Snapshots: {len(snapshots)}")
+        print(f"[BENCHMARK-HISTORY] JSON summary: {summary['json']}")
+        print(f"[BENCHMARK-HISTORY] Markdown summary: {summary['markdown']}")
+        return
+
+    if args.command == "benchmark-trend":
+        snapshots = collect_history_snapshots(Path(args.history_dir), args.prefix)
+        summary = build_history_trend_summary(args.prefix, snapshots)
+        artifacts = write_history_trend_summary(Path(args.history_dir), args.prefix)
+        print(f"[BENCHMARK-TREND] Prefix: {args.prefix}")
+        print(f"[BENCHMARK-TREND] Series type: {summary['series_type']}")
+        print(f"[BENCHMARK-TREND] Snapshots: {summary['snapshot_count']}")
+        print(f"[BENCHMARK-TREND] JSON summary: {artifacts['json']}")
+        print(f"[BENCHMARK-TREND] Markdown summary: {artifacts['markdown']}")
         return
 
     if args.command == "verify-package":

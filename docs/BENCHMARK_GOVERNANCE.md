@@ -16,14 +16,17 @@ It is intended to support:
 
 ## Benchmark profiles
 
-TRACE currently maintains two benchmark profiles:
+TRACE currently maintains three benchmark profiles:
 
 - `heuristic`
 - `hosted`
+- `live-hosted`
 
 The `heuristic` profile is the baseline release profile because it is deterministic and locally reproducible.
 
 The current `hosted` profile is a controlled mock-hosted benchmark path. It is useful for workflow comparison, timing instrumentation, and drift plumbing, but it is **not yet** a substitute for benchmarking against live provider responses.
+
+The `live-hosted` profile is the external-provider benchmark path. It is intended for pre-release validation against a real hosted model and requires `OPENROUTER_API_KEY`. Unless overridden, TRACE uses `openrouter/free`. Releases should record the exact hosted model identifier used for any live-provider benchmark artifact set.
 
 ## Acceptance thresholds
 
@@ -43,9 +46,12 @@ Before treating a TRACE revision as release-ready for public demonstration or ex
 
 - a passing heuristic benchmark summary
 - a passing hosted-profile benchmark summary
+- a passing live-hosted benchmark summary when provider credentials are available for release review
 - a heuristic-vs-hosted comparison artifact
+- a heuristic-vs-live-hosted comparison artifact when live-provider benchmarking is performed
 - signed artifact bundles for each emitted benchmark output set
-- latest history snapshots for the benchmark run set
+- latest and dated history snapshots for the benchmark run set
+- history trend summaries for benchmark and comparison series
 
 ## Required review questions
 
@@ -65,14 +71,15 @@ Recommended review flow:
 2. Verify the artifact manifest signature.
 3. Verify the file hashes listed in the artifact manifest.
 4. Review any comparison artifact for drift.
-5. Archive the current history snapshot.
+5. Review the trend summary for timing or drift movement across dated snapshots.
+6. Archive the current history snapshot set.
 
 ## Current limitations
 
 This governance process still has three important limitations:
 
-- the hosted profile currently uses a mock-hosted path rather than live provider benchmarking
-- benchmark history currently writes both latest-snapshot and dated-snapshot artifacts, but release policy does not yet enforce retention duration
+- the `hosted` profile remains a mock-hosted path rather than a live provider benchmark
+- benchmark history writes both latest-snapshot and dated-snapshot artifacts, but release policy does not yet enforce retention duration
 - timing thresholds are recorded but not yet enforced by policy
 
 ## Immediate next governance upgrades
@@ -80,5 +87,5 @@ This governance process still has three important limitations:
 The next governance improvements should be:
 
 - explicit timing regression thresholds
-- live-provider hosted benchmark criteria separate from mock-hosted criteria
 - release-tag integration between benchmark artifacts and public version markers
+- automated publication of signed benchmark bundles alongside release tags

@@ -36,7 +36,8 @@ The benchmark history demonstrates:
 
 - latest-snapshot records for heuristic, hosted, and comparison runs
 - immutable dated snapshot records for the same benchmark families
-- a lightweight baseline for benchmark regression tracking
+- history summary artifacts
+- trend summary artifacts suitable for release-review comparison
 
 These artifacts are illustrative sample outputs, not live case materials.
 
@@ -54,4 +55,12 @@ openssl dgst -sha256 -verify \
   examples/benchmark_comparison/bench_signer_public.pem \
   -signature examples/benchmark_comparison/artifact_manifest.sig \
   examples/benchmark_comparison/artifact_manifest.json
+
+trace benchmark-history \
+  --history-dir ./examples/benchmark_history \
+  --prefix benchmark_heuristic_latest
+
+trace benchmark-trend \
+  --history-dir ./examples/benchmark_history \
+  --prefix benchmark_heuristic_latest
 ```

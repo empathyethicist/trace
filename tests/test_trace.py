@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 import subprocess
+from unittest.mock import patch
 
 from trace.classify import classify_case
 from trace.ingest import (
@@ -17,7 +18,10 @@ from trace.irr import cohen_kappa, compute_irr, import_second_coder, krippendorf
 from trace.report import compute_findings, export_case_report, verify_evidence_package
 from trace.report import sign_manifest, verify_manifest_signature, verify_signing_certificate
 from trace.storage import read_json
+from trace.storage import write_json
 from trace.validation import (
+    benchmark_profile_settings,
+    build_history_trend_summary,
     compare_benchmark_summaries,
     run_benchmark_suite,
     run_validation,
@@ -26,6 +30,8 @@ from trace.validation import (
     write_benchmark_artifacts,
     write_comparison_artifacts,
     write_artifact_history_snapshot,
+    write_history_summary,
+    write_history_trend_summary,
 )
 
 
@@ -264,6 +270,20 @@ commonName = supplied
             self.assertEqual(hosted["profile"], "hosted")
             self.assertEqual(hosted["failed_fixtures"], 0)
 
+    def test_live_hosted_profile_settings(self) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            with self.assertRaises(ValueError):
+                benchmark_profile_settings("live-hosted")
+        with patch.dict(
+            "os.environ",
+            {"OPENROUTER_API_KEY": "test-key", "TRACE_BENCHMARK_OPENROUTER_MODEL": "google/gemma-4-26b-a4b-it:free"},
+            clear=True,
+        ):
+            settings = benchmark_profile_settings("live-hosted")
+        self.assertEqual(settings["provider"], "openrouter")
+        self.assertEqual(settings["model"], "google/gemma-4-26b-a4b-it:free")
+        self.assertEqual(settings["window_size"], 8)
+
     def test_benchmark_artifact_export(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -280,6 +300,48 @@ commonName = supplied
             self.assertTrue(snapshot["dated"].exists())
             self.assertNotEqual(snapshot["latest"], snapshot["dated"])
 
+    def test_history_summary_and_trend_export(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            history_dir = root / "history"
+            history_dir.mkdir(parents=True, exist_ok=True)
+            prefix = "benchmark_heuristic_latest"
+            write_json(
+                history_dir / f"{prefix}_2026-04-19T10-00-00Z.json",
+                {
+                    "label": prefix,
+                    "generated_at": "2026-04-19T10:00:00+00:00",
+                    "payload": {
+                        "profile": "heuristic",
+                        "pass_rate": 100.0,
+                        "failed_fixtures": 0,
+                        "total_elapsed_seconds": 1.2,
+                    },
+                },
+            )
+            write_json(
+                history_dir / f"{prefix}_2026-04-19T12-00-00Z.json",
+                {
+                    "label": prefix,
+                    "generated_at": "2026-04-19T12:00:00+00:00",
+                    "payload": {
+                        "profile": "heuristic",
+                        "pass_rate": 100.0,
+                        "failed_fixtures": 0,
+                        "total_elapsed_seconds": 1.5,
+                    },
+                },
+            )
+            history = write_history_summary(history_dir, prefix)
+            trend = write_history_trend_summary(history_dir, prefix)
+            trend_payload = read_json(trend["json"])
+            self.assertTrue(history["json"].exists())
+            self.assertTrue(history["markdown"].exists())
+            self.assertEqual(trend_payload["series_type"], "benchmark")
+            self.assertEqual(trend_payload["snapshot_count"], 2)
+            self.assertEqual(trend_payload["elapsed_delta_seconds"], 0.3)
+            self.assertIn("# TRACE Benchmark Trend Summary", trend["markdown"].read_text(encoding="utf-8"))
+
     def test_benchmark_comparison_artifact_export(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -292,6 +354,33 @@ commonName = supplied
             self.assertTrue(artifacts["markdown"].exists())
             markdown = artifacts["markdown"].read_text(encoding="utf-8")
             self.assertIn("# TRACE Benchmark Comparison", markdown)
+
+    def test_comparison_history_trend_summary(self) -> None:
+        prefix = "benchmark_compare_heuristic_vs_hosted_latest"
+        snapshots = [
+            {
+                "generated_at": "2026-04-19T10:00:00+00:00",
+                "payload": {
+                    "baseline_profile": "heuristic",
+                    "candidate_profile": "hosted",
+                    "drift_count": 0,
+                    "drift_free": True,
+                },
+            },
+            {
+                "generated_at": "2026-04-19T12:00:00+00:00",
+                "payload": {
+                    "baseline_profile": "heuristic",
+                    "candidate_profile": "hosted",
+                    "drift_count": 1,
+                    "drift_free": False,
+                },
+            },
+        ]
+        summary = build_history_trend_summary(prefix, snapshots)
+        self.assertEqual(summary["series_type"], "comparison")
+        self.assertEqual(summary["drift_count_delta"], 1)
+        self.assertEqual(summary["drift_free_snapshots"], 1)
 
     def test_signed_benchmark_artifact_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

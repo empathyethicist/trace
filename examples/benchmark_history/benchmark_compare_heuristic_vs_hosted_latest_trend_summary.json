@@ -1,0 +1,17 @@
+{
+  "prefix": "benchmark_compare_heuristic_vs_hosted_latest",
+  "series_type": "comparison",
+  "snapshot_count": 1,
+  "latest_generated_at": "2026-04-19T14:54:34+00:00",
+  "oldest_generated_at": "2026-04-19T14:54:34+00:00",
+  "baseline_profile": "heuristic",
+  "candidate_profile": "hosted",
+  "latest_drift_count": 0,
+  "oldest_drift_count": 0,
+  "drift_count_delta": 0,
+  "latest_drift_free": true,
+  "oldest_drift_free": true,
+  "max_drift_count": 0,
+  "min_drift_count": 0,
+  "drift_free_snapshots": 1
+}

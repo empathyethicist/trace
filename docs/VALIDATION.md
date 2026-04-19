@@ -34,7 +34,7 @@ The table below reflects the current repository validation posture on the includ
 | Dual-coder IRR computation | Implemented |
 | Multiple reference fixtures | Implemented |
 | Parser validation for court / UFED / AXIOM ingest | Implemented |
-| Hosted-provider benchmark corpus | Not yet implemented |
+| Hosted-provider benchmark corpus | Live-provider profile supported |
 | PDF report generation validation | Implemented |
 | Evidence-package hash verification | Implemented |
 | Detached manifest signature verification | Implemented |
@@ -116,6 +116,8 @@ trace validate --reference ./validation/reference_mixed_case.json
 trace validate --reference ./validation/reference_noisy_case.json
 trace benchmark --validation-dir ./validation
 trace benchmark --validation-dir ./validation --profile hosted --output-dir ./benchmark_artifacts
+trace benchmark --validation-dir ./validation --profile live-hosted --output-dir ./benchmark_artifacts_live
+trace benchmark-trend --history-dir ./benchmark_history --prefix benchmark_heuristic_latest
 ```
 
 The benchmark command can emit:
@@ -135,6 +137,8 @@ The companion comparison workflow can emit:
 
 This supports explicit drift review between heuristic and hosted benchmark profiles.
 
+When provider credentials are available, the same workflow can be run with `--profile live-hosted` to benchmark against a real hosted provider. TRACE requires `OPENROUTER_API_KEY` for this path and defaults to `openrouter/free` unless `TRACE_BENCHMARK_OPENROUTER_MODEL` is set.
+
 The benchmark workflow can also emit history snapshots such as:
 
 - `benchmark_heuristic_latest.json`
@@ -144,6 +148,15 @@ The benchmark workflow can also emit history snapshots such as:
 - `benchmark_hosted_latest_<timestamp>.json`
 
 This creates both a stable latest pointer and an immutable dated record for later regression review.
+
+TRACE can also emit trend summaries derived from the dated history snapshots:
+
+- `benchmark_heuristic_latest_trend_summary.json`
+- `benchmark_heuristic_latest_trend_summary.md`
+- `benchmark_compare_heuristic_vs_hosted_latest_trend_summary.json`
+- `benchmark_compare_heuristic_vs_hosted_latest_trend_summary.md`
+
+These summarize pass-rate, failure-count, timing, or drift movement across the retained snapshot series.
 
 Governance expectations for benchmark acceptance and release review are defined in:
 

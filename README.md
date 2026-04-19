@@ -120,7 +120,9 @@ trace validate --reference ./validation/companion_incident.json
 trace validate --reference ./validation/reference_long_case.json
 trace benchmark --validation-dir ./validation
 trace benchmark --validation-dir ./validation --profile hosted --output-dir ./benchmark_artifacts
+trace benchmark --validation-dir ./validation --profile live-hosted --output-dir ./benchmark_artifacts_live
 trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile hosted --output-dir ./benchmark_comparison
+trace benchmark-trend --history-dir ./benchmark_history --prefix benchmark_heuristic_latest
 trace benchmark --validation-dir ./validation --output-dir ./benchmark_artifacts --history-dir ./benchmark_history --sign-private-key ./keys/benchmark_signer.pem --sign-public-key ./keys/benchmark_signer_public.pem --signing-certificate ./keys/benchmark_signer.crt
 ```
 
@@ -191,7 +193,10 @@ trace verify-signature --package ./evidence/CASE-001 --public-key ./keys/trace_m
 trace validate --reference ./validation/companion_incident.json
 trace benchmark --validation-dir ./validation
 trace benchmark --validation-dir ./validation --profile hosted --output-dir ./benchmark_artifacts
+trace benchmark --validation-dir ./validation --profile live-hosted --output-dir ./benchmark_artifacts_live
 trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile hosted --output-dir ./benchmark_comparison
+trace benchmark-history --history-dir ./benchmark_history --prefix benchmark_heuristic_latest
+trace benchmark-trend --history-dir ./benchmark_history --prefix benchmark_heuristic_latest
 ```
 
 ## Quality and forensic controls
@@ -222,6 +227,7 @@ TRACE is designed around the following controls:
 - Validation posture: `docs/VALIDATION.md`
 - Benchmark governance: `docs/BENCHMARK_GOVERNANCE.md`
 - Release checklist: `docs/RELEASE_CHECKLIST.md`
+- Release tagging: `docs/RELEASE_TAGGING.md`
 - Evidence package specification: `docs/EVIDENCE_PACKAGE_SPEC.md`
 - Architecture: `docs/ARCHITECTURE.md`
 - Threat model: `docs/THREAT_MODEL.md`
@@ -232,6 +238,7 @@ TRACE is designed around the following controls:
 - Python 3.11+ is recommended.
 - Hosted-model execution may require API credentials and network access.
 - Free-model OpenRouter testing is supported, but hosted providers may return schema-drifting output; TRACE normalizes common deviations and falls back safely when needed.
+- The `live-hosted` benchmark profile requires `OPENROUTER_API_KEY` and defaults to `openrouter/free` unless `TRACE_BENCHMARK_OPENROUTER_MODEL` is set.
 
 ## License
 

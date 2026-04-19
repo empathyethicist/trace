@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from dataclasses import dataclass
 import hashlib
+import os
 from pathlib import Path
 import subprocess
 from time import perf_counter
@@ -24,15 +25,30 @@ class ValidationResult:
     elapsed_seconds: float
 
 
+def benchmark_profile_settings(profile: str) -> dict:
+    if profile == "heuristic":
+        return {}
+    if profile == "hosted":
+        return {"provider": "mock", "model": "benchmark-mock-model", "window_size": 8}
+    if profile == "live-hosted":
+        api_key = os.environ.get("OPENROUTER_API_KEY")
+        if not api_key:
+            raise ValueError("OPENROUTER_API_KEY is required for the live-hosted benchmark profile")
+        return {
+            "provider": "openrouter",
+            "model": os.environ.get("TRACE_BENCHMARK_OPENROUTER_MODEL", "openrouter/free"),
+            "window_size": 8,
+        }
+    raise ValueError(f"Unsupported benchmark profile: {profile}")
+
+
 def run_validation(reference_path: Path, working_root: Path, profile: str = "heuristic") -> ValidationResult:
     start = perf_counter()
     reference = read_json(reference_path)
     case_id = reference["case_id"]
     case_root = working_root / "cases"
     ingest_case(reference_path, case_id, "validator", "json", case_root)
-    classify_kwargs = {}
-    if profile == "hosted":
-        classify_kwargs = {"provider": "mock", "model": "benchmark-mock-model", "window_size": 8}
+    classify_kwargs = benchmark_profile_settings(profile)
     classify_case(case_root / case_id, "validator", **classify_kwargs)
     classified = read_json(case_root / case_id / "classified_transcript.json")
     transcript = classified["transcript"]
@@ -202,6 +218,173 @@ def write_artifact_history_snapshot(payload: dict, history_dir: Path, label: str
     write_json(latest_path, snapshot)
     write_json(dated_path, snapshot)
     return {"latest": latest_path, "dated": dated_path}
+
+
+def collect_history_snapshots(history_dir: Path, prefix: str) -> list[dict]:
+    snapshots = []
+    if not history_dir.exists():
+        return snapshots
+    for path in sorted(history_dir.glob(f"{prefix}_*.json")):
+        if path.name == f"{prefix}.json":
+            continue
+        if path.name.endswith("_history_summary.json") or path.name.endswith("_trend_summary.json"):
+            continue
+        snapshots.append(read_json(path))
+    return snapshots
+
+
+def render_history_markdown(prefix: str, snapshots: list[dict]) -> str:
+    lines = [
+        "# TRACE Benchmark History\n\n",
+        f"- Prefix: `{prefix}`\n",
+        f"- Snapshots: `{len(snapshots)}`\n\n",
+        "| Generated At | Pass Rate | Failed Fixtures | Total Time |\n",
+        "|---|---:|---:|---:|\n",
+    ]
+    for snapshot in snapshots:
+        payload = snapshot.get("payload", {})
+        lines.append(
+            f"| `{snapshot.get('generated_at')}` | `{payload.get('pass_rate', 0.0)}%` | "
+            f"`{payload.get('failed_fixtures', 0)}` | `{payload.get('total_elapsed_seconds', 0.0)}` |\n"
+        )
+    return "".join(lines)
+
+
+def write_history_summary(history_dir: Path, prefix: str) -> dict:
+    snapshots = collect_history_snapshots(history_dir, prefix)
+    summary = {
+        "prefix": prefix,
+        "snapshot_count": len(snapshots),
+        "snapshots": snapshots,
+    }
+    json_path = history_dir / f"{prefix}_history_summary.json"
+    md_path = history_dir / f"{prefix}_history_summary.md"
+    write_json(json_path, summary)
+    md_path.write_text(render_history_markdown(prefix, snapshots), encoding="utf-8")
+    return {"json": json_path, "markdown": md_path}
+
+
+def _history_series_type(snapshots: list[dict]) -> str:
+    if not snapshots:
+        return "unknown"
+    payload = snapshots[-1].get("payload", {})
+    if "pass_rate" in payload:
+        return "benchmark"
+    if "drift_count" in payload:
+        return "comparison"
+    return "unknown"
+
+
+def build_history_trend_summary(prefix: str, snapshots: list[dict]) -> dict:
+    series_type = _history_series_type(snapshots)
+    summary = {
+        "prefix": prefix,
+        "series_type": series_type,
+        "snapshot_count": len(snapshots),
+        "latest_generated_at": snapshots[-1]["generated_at"] if snapshots else None,
+        "oldest_generated_at": snapshots[0]["generated_at"] if snapshots else None,
+    }
+    if not snapshots:
+        return summary
+
+    latest = snapshots[-1]["payload"]
+    oldest = snapshots[0]["payload"]
+    if series_type == "benchmark":
+        elapsed_values = [snapshot.get("payload", {}).get("total_elapsed_seconds", 0.0) for snapshot in snapshots]
+        pass_rates = [snapshot.get("payload", {}).get("pass_rate", 0.0) for snapshot in snapshots]
+        failed_values = [snapshot.get("payload", {}).get("failed_fixtures", 0) for snapshot in snapshots]
+        summary.update(
+            {
+                "profile": latest.get("profile"),
+                "latest_pass_rate": latest.get("pass_rate"),
+                "oldest_pass_rate": oldest.get("pass_rate"),
+                "pass_rate_delta": round(latest.get("pass_rate", 0.0) - oldest.get("pass_rate", 0.0), 4),
+                "latest_failed_fixtures": latest.get("failed_fixtures"),
+                "oldest_failed_fixtures": oldest.get("failed_fixtures"),
+                "failed_fixture_delta": latest.get("failed_fixtures", 0) - oldest.get("failed_fixtures", 0),
+                "latest_total_elapsed_seconds": latest.get("total_elapsed_seconds"),
+                "oldest_total_elapsed_seconds": oldest.get("total_elapsed_seconds"),
+                "elapsed_delta_seconds": round(
+                    latest.get("total_elapsed_seconds", 0.0) - oldest.get("total_elapsed_seconds", 0.0),
+                    4,
+                ),
+                "fastest_total_elapsed_seconds": min(elapsed_values),
+                "slowest_total_elapsed_seconds": max(elapsed_values),
+                "best_pass_rate": max(pass_rates),
+                "worst_pass_rate": min(pass_rates),
+                "max_failed_fixtures": max(failed_values),
+            }
+        )
+        return summary
+
+    if series_type == "comparison":
+        drift_values = [snapshot.get("payload", {}).get("drift_count", 0) for snapshot in snapshots]
+        drift_free_count = sum(1 for snapshot in snapshots if snapshot.get("payload", {}).get("drift_free", False))
+        summary.update(
+            {
+                "baseline_profile": latest.get("baseline_profile"),
+                "candidate_profile": latest.get("candidate_profile"),
+                "latest_drift_count": latest.get("drift_count"),
+                "oldest_drift_count": oldest.get("drift_count"),
+                "drift_count_delta": latest.get("drift_count", 0) - oldest.get("drift_count", 0),
+                "latest_drift_free": latest.get("drift_free"),
+                "oldest_drift_free": oldest.get("drift_free"),
+                "max_drift_count": max(drift_values),
+                "min_drift_count": min(drift_values),
+                "drift_free_snapshots": drift_free_count,
+            }
+        )
+    return summary
+
+
+def render_history_trend_markdown(summary: dict) -> str:
+    lines = [
+        "# TRACE Benchmark Trend Summary\n\n",
+        f"- Prefix: `{summary['prefix']}`\n",
+        f"- Series Type: `{summary['series_type']}`\n",
+        f"- Snapshots: `{summary['snapshot_count']}`\n",
+        f"- Oldest Snapshot: `{summary['oldest_generated_at']}`\n",
+        f"- Latest Snapshot: `{summary['latest_generated_at']}`\n",
+    ]
+    if summary["series_type"] == "benchmark":
+        lines.extend(
+            [
+                f"- Profile: `{summary['profile']}`\n",
+                f"- Pass Rate: `{summary['oldest_pass_rate']}%` → `{summary['latest_pass_rate']}%` "
+                f"(Δ `{summary['pass_rate_delta']}`)\n",
+                f"- Failed Fixtures: `{summary['oldest_failed_fixtures']}` → `{summary['latest_failed_fixtures']}` "
+                f"(Δ `{summary['failed_fixture_delta']}`)\n",
+                f"- Total Time: `{summary['oldest_total_elapsed_seconds']}`s → "
+                f"`{summary['latest_total_elapsed_seconds']}`s (Δ `{summary['elapsed_delta_seconds']}`s)\n",
+                f"- Fastest / Slowest: `{summary['fastest_total_elapsed_seconds']}`s / "
+                f"`{summary['slowest_total_elapsed_seconds']}`s\n",
+                f"- Best / Worst Pass Rate: `{summary['best_pass_rate']}%` / `{summary['worst_pass_rate']}%`\n",
+                f"- Max Failed Fixtures Observed: `{summary['max_failed_fixtures']}`\n",
+            ]
+        )
+    elif summary["series_type"] == "comparison":
+        lines.extend(
+            [
+                f"- Baseline Profile: `{summary['baseline_profile']}`\n",
+                f"- Candidate Profile: `{summary['candidate_profile']}`\n",
+                f"- Drift Count: `{summary['oldest_drift_count']}` → `{summary['latest_drift_count']}` "
+                f"(Δ `{summary['drift_count_delta']}`)\n",
+                f"- Drift-Free Snapshots: `{summary['drift_free_snapshots']}` / `{summary['snapshot_count']}`\n",
+                f"- Min / Max Drift Count: `{summary['min_drift_count']}` / `{summary['max_drift_count']}`\n",
+                f"- Latest Drift-Free Status: `{summary['latest_drift_free']}`\n",
+            ]
+        )
+    return "".join(lines)
+
+
+def write_history_trend_summary(history_dir: Path, prefix: str) -> dict:
+    snapshots = collect_history_snapshots(history_dir, prefix)
+    summary = build_history_trend_summary(prefix, snapshots)
+    json_path = history_dir / f"{prefix}_trend_summary.json"
+    md_path = history_dir / f"{prefix}_trend_summary.md"
+    write_json(json_path, summary)
+    md_path.write_text(render_history_trend_markdown(summary), encoding="utf-8")
+    return {"json": json_path, "markdown": md_path}
 
 
 def sign_artifact_bundle(
