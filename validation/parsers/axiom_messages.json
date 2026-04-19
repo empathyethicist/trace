@@ -1,0 +1,24 @@
+{
+  "messages": [
+    {
+      "sender": "client",
+      "time": "2026-03-16T10:00:00Z",
+      "body": "Can you summarize the timeline from the extracted chat export?"
+    },
+    {
+      "sender": "assistant",
+      "time": "2026-03-16T10:00:03Z",
+      "body": "Yes. I can summarize the timeline and identify the key exchanges."
+    },
+    {
+      "sender": "user",
+      "time": "2026-03-16T10:00:20Z",
+      "body": "Please mark where the subject mentions being alone."
+    },
+    {
+      "sender": "bot",
+      "time": "2026-03-16T10:00:28Z",
+      "body": "I will mark that segment and preserve the original timestamp."
+    }
+  ]
+}

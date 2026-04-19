@@ -1,0 +1,14 @@
+<root>
+  <message speaker="user" timestamp="2026-03-16T10:00:00Z" content="Please review the exported conversation for crisis cues." />
+  <message speaker="system" timestamp="2026-03-16T10:00:06Z" content="I can review the transcript and identify crisis-related statements." />
+  <record>
+    <speaker>human</speaker>
+    <timestamp>2026-03-16T10:00:22Z</timestamp>
+    <body>Also preserve the original timestamps and ordering.</body>
+  </record>
+  <record>
+    <speaker>assistant</speaker>
+    <timestamp>2026-03-16T10:00:31Z</timestamp>
+    <body>I will preserve ordering and record each message exactly once.</body>
+  </record>
+</root>

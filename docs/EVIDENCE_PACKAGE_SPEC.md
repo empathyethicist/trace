@@ -19,7 +19,9 @@ TRACE currently exports the following artifacts:
 ```text
 evidence_package/
   manifest.json
+  manifest.sig
   verification.json
+  override_summary.json
   forensic_report.pdf
   chain_of_custody.json
   source_transcript.json
@@ -55,6 +57,10 @@ Contains package-level metadata including:
 
 The package hash is computed over exported package contents while excluding `verification.json` and any detached signature file. The `package_hash_sha256` field is blanked during hash derivation so the manifest can verify itself without circular dependence.
 
+### `manifest.sig`
+
+Optional detached signature generated for `manifest.json`. TRACE can verify this signature against a supplied public key through the CLI.
+
 ### `verification.json`
 
 Stores verification results for:
@@ -63,6 +69,15 @@ Stores verification results for:
 - classified transcript hash match
 - package hash match
 - aggregate verification pass/fail
+
+### `override_summary.json`
+
+Stores a case-level summary of:
+
+- accepted classifications
+- flagged classifications
+- overridden classifications
+- per-message override rationales when present
 
 ### `chain_of_custody.json`
 
@@ -95,7 +110,7 @@ Stores inter-rater reliability outputs when dual-coder workflows are used.
 
 ### `forensic_report.json`, `forensic_report.md`, and `forensic_report.pdf`
 
-Provide machine-readable, Markdown, and PDF report outputs.
+Provide machine-readable, Markdown, and PDF report outputs, including override summary counts.
 
 ### `audit_log.jsonl`
 
@@ -123,8 +138,7 @@ The evidence package is designed to be:
 
 The current package format does not yet include:
 
-- signature verification tooling for detached manifest signatures
-- dedicated examiner override rationale summary views separate from message-level storage
 - authenticated timestamping or external attestation
+- embedded certificate-chain handling for signed manifests
 
 Those are planned future enhancements rather than current guarantees.

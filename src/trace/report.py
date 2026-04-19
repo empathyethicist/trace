@@ -83,6 +83,45 @@ def compute_findings(transcript: list[dict]) -> dict:
     }
 
 
+def compute_override_summary(transcript: list[dict]) -> dict:
+    overridden = []
+    flagged = []
+    accepted = 0
+    for message in transcript:
+        classification = message.get("classification") or {}
+        decision = classification.get("decision", "accepted")
+        if decision == "overridden":
+            overridden.append(
+                {
+                    "message_id": message["id"],
+                    "speaker": message["speaker"],
+                    "decision": decision,
+                    "override_rationale": classification.get("override_rationale", ""),
+                    "behavioral_category": classification.get("behavioral_category"),
+                    "behavioral_subcategory": classification.get("behavioral_subcategory"),
+                    "ai_role": classification.get("ai_role"),
+                    "vulnerability_level": classification.get("vulnerability_level"),
+                }
+            )
+        elif decision == "flagged":
+            flagged.append(
+                {
+                    "message_id": message["id"],
+                    "speaker": message["speaker"],
+                    "requires_review": classification.get("requires_review", False),
+                }
+            )
+        else:
+            accepted += 1
+    return {
+        "accepted_count": accepted,
+        "flagged_count": len(flagged),
+        "overridden_count": len(overridden),
+        "flagged_messages": flagged,
+        "overridden_messages": overridden,
+    }
+
+
 def hash_path(path: Path) -> str:
     digest = hashlib.sha256()
     if path.is_dir():
@@ -108,33 +147,59 @@ def hash_package_contents(package_dir: Path) -> str:
     return digest.hexdigest()
 
 
-def write_report_markdown(case_id: str, findings: dict) -> str:
-    return (
+def write_report_markdown(case_id: str, findings: dict, override_summary: dict) -> str:
+    lines = [
         f"# TRACE Forensic Report\n\n"
         f"- Case ID: `{case_id}`\n"
         f"- Inappropriate Response Rate: `{findings['inappropriate_response_rate']}%`\n"
         f"- Crisis Failure Rate: `{findings['crisis_failure_rate']}%`\n"
         f"- Pattern Systematic: `{findings['pattern_distribution']['systematic']}`\n"
         f"- Concentration Index: `{findings['pattern_distribution']['concentration_index']}`\n"
-    )
+        f"- Accepted Classifications: `{override_summary['accepted_count']}`\n"
+        f"- Flagged Classifications: `{override_summary['flagged_count']}`\n"
+        f"- Overridden Classifications: `{override_summary['overridden_count']}`\n"
+    ]
+    if override_summary["overridden_messages"]:
+        lines.append("\n## Override Summary\n\n")
+        for item in override_summary["overridden_messages"]:
+            lines.append(
+                f"- Message `{item['message_id']}` ({item['speaker']}): "
+                f"`{item['override_rationale'] or 'No rationale provided'}`\n"
+            )
+    return "".join(lines)
 
 
-def write_report_pdf(path: Path, case_id: str, findings: dict) -> None:
+def _pdf_escape(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def write_report_pdf(path: Path, case_id: str, findings: dict, override_summary: dict) -> None:
+    report_lines = [
+        "TRACE Forensic Report",
+        f"Case ID: {case_id}",
+        f"Inappropriate Response Rate: {findings['inappropriate_response_rate']}%",
+        f"Crisis Failure Rate: {findings['crisis_failure_rate']}%",
+        f"Pattern Systematic: {findings['pattern_distribution']['systematic']}",
+        f"Concentration Index: {findings['pattern_distribution']['concentration_index']}",
+        f"Accepted Classifications: {override_summary['accepted_count']}",
+        f"Flagged Classifications: {override_summary['flagged_count']}",
+        f"Overridden Classifications: {override_summary['overridden_count']}",
+    ]
+    for item in override_summary["overridden_messages"]:
+        report_lines.append(
+            f"Override #{item['message_id']} ({item['speaker']}): {item['override_rationale'] or 'No rationale provided'}"
+        )
     lines = [
         "BT",
-        "/F1 18 Tf 72 760 Td (TRACE Forensic Report) Tj",
-        "/F1 12 Tf 0 -24 Td",
-        f"(Case ID: {case_id}) Tj",
-        "0 -18 Td",
-        f"(Inappropriate Response Rate: {findings['inappropriate_response_rate']}%) Tj",
-        "0 -18 Td",
-        f"(Crisis Failure Rate: {findings['crisis_failure_rate']}%) Tj",
-        "0 -18 Td",
-        f"(Pattern Systematic: {findings['pattern_distribution']['systematic']}) Tj",
-        "0 -18 Td",
-        f"(Concentration Index: {findings['pattern_distribution']['concentration_index']}) Tj",
-        "ET",
     ]
+    y_offset = 760
+    for index, line in enumerate(report_lines):
+        font_size = 18 if index == 0 else 12
+        if index == 0:
+            lines.append(f"/F1 {font_size} Tf 72 {y_offset} Td ({_pdf_escape(line)}) Tj")
+        else:
+            lines.append(f"/F1 {font_size} Tf 0 -18 Td ({_pdf_escape(line)}) Tj")
+    lines.append("ET")
     stream = "\n".join(lines).encode("latin-1", errors="replace")
     objects = []
     objects.append(b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n")
@@ -167,6 +232,37 @@ def verify_evidence_package(package_dir: Path) -> dict:
     return checks
 
 
+def verify_manifest_signature(package_dir: Path, public_key_path: Path) -> dict:
+    signature_path = package_dir / "manifest.sig"
+    result = {
+        "signature_present": signature_path.exists(),
+        "public_key_present": public_key_path.exists(),
+        "signature_valid": False,
+    }
+    if not result["signature_present"] or not result["public_key_present"]:
+        result["all_pass"] = False
+        return result
+    completed = subprocess.run(
+        [
+            "openssl",
+            "dgst",
+            "-sha256",
+            "-verify",
+            str(public_key_path),
+            "-signature",
+            str(signature_path),
+            str(package_dir / "manifest.json"),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    result["signature_valid"] = completed.returncode == 0
+    result["stdout"] = completed.stdout.strip()
+    result["stderr"] = completed.stderr.strip()
+    result["all_pass"] = result["signature_present"] and result["public_key_present"] and result["signature_valid"]
+    return result
+
+
 def sign_manifest(package_dir: Path, private_key_path: Path) -> Path:
     signature_path = package_dir / "manifest.sig"
     subprocess.run(
@@ -185,6 +281,7 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str) -> P
     source = read_json(case_dir / "source_transcript.json")
     classified = read_json(case_dir / "classified_transcript.json")
     findings = compute_findings(classified["transcript"])
+    override_summary = compute_override_summary(classified["transcript"])
     irr_stats_path = case_dir / "irr_statistics.json"
     irr_stats = read_json(irr_stats_path) if irr_stats_path.exists() else {}
 
@@ -196,13 +293,19 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str) -> P
     write_json(package_dir / "chain_of_custody.json", read_json(case_dir / "chain_of_custody.json"))
     write_json(package_dir / "irr_statistics.json", irr_stats)
     (package_dir / "forensic_report.md").write_text(
-        write_report_markdown(source["case_id"], findings), encoding="utf-8"
+        write_report_markdown(source["case_id"], findings, override_summary), encoding="utf-8"
     )
-    write_report_pdf(package_dir / "forensic_report.pdf", source["case_id"], findings)
+    write_report_pdf(package_dir / "forensic_report.pdf", source["case_id"], findings, override_summary)
     write_json(
         package_dir / "forensic_report.json",
-        {"case_id": source["case_id"], "findings": findings, "generated_at": utc_now_iso()},
+        {
+            "case_id": source["case_id"],
+            "findings": findings,
+            "override_summary": override_summary,
+            "generated_at": utc_now_iso(),
+        },
     )
+    write_json(package_dir / "override_summary.json", override_summary)
     (package_dir / "audit_log.jsonl").write_text((case_dir / "audit_log.jsonl").read_text(encoding="utf-8"), encoding="utf-8")
     for filename, contents in prompt_template_files().items():
         (config_dir / filename).write_text(contents + "\n", encoding="utf-8")

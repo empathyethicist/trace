@@ -1,0 +1,4 @@
+[2026-03-16T10:00:00Z] User: I need help understanding tomorrow's hearing schedule.
+[2026-03-16T10:00:10Z] AI: I can help summarize the timeline and required appearances.
+[2026-03-16T10:01:00Z] Human: Please also note the lunch recess and evidence review block.
+[2026-03-16T10:01:20Z] Assistant: Noted. I will include the recess and the evidence review block in the outline.

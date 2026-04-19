@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+import subprocess
 
 from trace.classify import classify_case
 from trace.ingest import (
@@ -14,12 +15,14 @@ from trace.ingest import (
 )
 from trace.irr import cohen_kappa, compute_irr, import_second_coder, krippendorff_alpha_nominal, krippendorff_alpha_ordinal
 from trace.report import compute_findings, export_case_report, verify_evidence_package
+from trace.report import sign_manifest, verify_manifest_signature
 from trace.storage import read_json
 from trace.validation import run_validation
 
 
 FIXTURE = Path(__file__).resolve().parent.parent / "validation" / "companion_incident.json"
 BENIGN_FIXTURE = Path(__file__).resolve().parent.parent / "validation" / "reference_benign_case.json"
+PARSER_FIXTURE_ROOT = Path(__file__).resolve().parent.parent / "validation" / "parsers"
 
 
 class TraceTests(unittest.TestCase):
@@ -32,17 +35,25 @@ class TraceTests(unittest.TestCase):
             self.assertEqual(records[0]["speaker"], "user")
 
     def test_parse_additional_formats(self) -> None:
+        court = PARSER_FIXTURE_ROOT / "court_transcript.txt"
+        axiom = PARSER_FIXTURE_ROOT / "axiom_messages.json"
+        ufed = PARSER_FIXTURE_ROOT / "ufed_messages.xml"
+        self.assertEqual(len(parse_court_transcript_records(court)), 4)
+        self.assertEqual(len(parse_axiom_json_records(axiom)), 4)
+        self.assertEqual(len(parse_ufed_xml_records(ufed)), 4)
+        self.assertEqual(parse_court_transcript_records(court)[1]["speaker"], "system")
+        self.assertEqual(parse_axiom_json_records(axiom)[2]["speaker"], "user")
+        self.assertEqual(parse_ufed_xml_records(ufed)[3]["speaker"], "system")
+
+    def test_ingest_supported_parser_formats(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            court = root / "court.txt"
-            court.write_text("[10:00] User: Hello\n[10:01] AI: Hi there\n", encoding="utf-8")
-            self.assertEqual(len(parse_court_transcript_records(court)), 2)
-            axiom = root / "axiom.json"
-            axiom.write_text('{"messages":[{"speaker":"user","timestamp":"t1","content":"hi"},{"speaker":"system","timestamp":"t2","content":"hello"}]}', encoding="utf-8")
-            self.assertEqual(len(parse_axiom_json_records(axiom)), 2)
-            ufed = root / "ufed.xml"
-            ufed.write_text('<root><message speaker="user" timestamp="t1" content="hi"/><message speaker="system" timestamp="t2" content="hello"/></root>', encoding="utf-8")
-            self.assertEqual(len(parse_ufed_xml_records(ufed)), 2)
+            root = Path(tmp) / "cases"
+            court = ingest_case(PARSER_FIXTURE_ROOT / "court_transcript.txt", "COURT-1", "tester", "court", root)
+            axiom = ingest_case(PARSER_FIXTURE_ROOT / "axiom_messages.json", "AXIOM-1", "tester", "axiom", root)
+            ufed = ingest_case(PARSER_FIXTURE_ROOT / "ufed_messages.xml", "UFED-1", "tester", "ufed", root)
+            self.assertEqual(court.transcript_count, 4)
+            self.assertEqual(axiom.transcript_count, 4)
+            self.assertEqual(ufed.transcript_count, 4)
 
     def test_ingest_classify_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -57,7 +68,32 @@ class TraceTests(unittest.TestCase):
             self.assertTrue((package / "manifest.json").exists())
             self.assertTrue((package / "configuration" / "prompt_templates" / "sbc_v1.0.txt").exists())
             self.assertTrue((package / "forensic_report.pdf").exists())
+            self.assertTrue((package / "override_summary.json").exists())
             self.assertTrue(verify_evidence_package(package)["all_pass"])
+
+    def test_manifest_sign_and_verify(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ingest_case(FIXTURE, "CASE-SIGN", "tester", "json", root / "cases")
+            classify_case(root / "cases" / "CASE-SIGN", "tester")
+            package = export_case_report(root / "cases" / "CASE-SIGN", root / "out", "tester")
+            private_key = root / "trace_private.pem"
+            public_key = root / "trace_public.pem"
+            subprocess.run(
+                ["openssl", "genpkey", "-algorithm", "RSA", "-out", str(private_key), "-pkeyopt", "rsa_keygen_bits:2048"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(
+                ["openssl", "rsa", "-in", str(private_key), "-pubout", "-out", str(public_key)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            sign_manifest(package, private_key)
+            verification = verify_manifest_signature(package, public_key)
+            self.assertTrue(verification["all_pass"])
 
     def test_mock_provider_classification(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -7,7 +7,7 @@ from trace import __version__
 from trace.classify import classify_case
 from trace.ingest import ingest_case
 from trace.irr import compute_irr, import_second_coder
-from trace.report import export_case_report, sign_manifest, verify_evidence_package
+from trace.report import export_case_report, sign_manifest, verify_evidence_package, verify_manifest_signature
 from trace.validation import run_validation
 
 
@@ -61,6 +61,10 @@ def build_parser() -> argparse.ArgumentParser:
     sign = sub.add_parser("sign-package")
     sign.add_argument("--package", required=True)
     sign.add_argument("--private-key", required=True)
+
+    verify_sig = sub.add_parser("verify-signature")
+    verify_sig.add_argument("--package", required=True)
+    verify_sig.add_argument("--public-key", required=True)
 
     sub.add_parser("version")
     return parser
@@ -127,6 +131,12 @@ def main() -> None:
     if args.command == "sign-package":
         path = sign_manifest(Path(args.package), Path(args.private_key))
         print(f"[SIGN] Manifest signature written to {path}")
+        return
+
+    if args.command == "verify-signature":
+        checks = verify_manifest_signature(Path(args.package), Path(args.public_key))
+        for key, value in checks.items():
+            print(f"[VERIFY-SIGNATURE] {key}: {value}")
         return
 
     if args.command == "version":

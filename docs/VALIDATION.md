@@ -16,6 +16,7 @@ TRACE currently validates the following:
 - correlation-analysis output generation
 - evidence-package artifact creation
 - evidence-package hash verification
+- detached manifest signature verification
 - dual-coder IRR computation
 - reference-case agreement using the Companion Incident and benign baseline fixtures
 
@@ -35,6 +36,7 @@ The table below reflects the current repository validation posture on the includ
 | Hosted-provider benchmark corpus | Not yet implemented |
 | PDF report generation validation | Implemented |
 | Evidence-package hash verification | Implemented |
+| Detached manifest signature verification | Implemented |
 
 ## Current automated checks
 
@@ -58,6 +60,7 @@ TRACE ships with:
 
 - `validation/companion_incident.json`
 - `validation/reference_benign_case.json`
+- `validation/parsers/`
 
 This fixture provides:
 
@@ -71,6 +74,12 @@ The benign fixture provides:
 - a baseline non-crisis interaction
 - expected zero-harm findings
 - a guard against over-escalation in vulnerability classification
+
+The parser fixtures provide:
+
+- court-style transcript samples
+- AXIOM-style JSON message samples
+- UFED-style XML message samples
 
 Run:
 

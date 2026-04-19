@@ -15,6 +15,7 @@ TRACE is currently a working pre-production implementation with:
 - dual-coder import and inter-rater reliability computation
 - structured evidence-package export with manifest, verification output, audit log, schema versions, prompt templates, classified transcript outputs, Markdown report output, and PDF report output
 - package verification and manifest signing commands
+- detached manifest signature verification
 - validation fixtures and automated tests
 
 Current gaps to full production deployment include deeper parser coverage against vendor-native exports, broader adversarial validation fixtures, and additional hardening for high-volume hosted-model execution. See `docs/ROADMAP.md`.
@@ -86,6 +87,7 @@ tests/
 validation/
   companion_incident.json  Reference transcript fixture
   reference_benign_case.json  Baseline benign fixture
+  parsers/                   Parser-format reference fixtures
 ```
 
 ## Installation
@@ -169,6 +171,7 @@ trace report --case-id CASE-001 --examiner "D. Mobley" --output ./evidence
 ```bash
 trace verify-package --package ./evidence/CASE-001
 trace sign-package --package ./evidence/CASE-001 --private-key ./keys/trace_manifest_signing.pem
+trace verify-signature --package ./evidence/CASE-001 --public-key ./keys/trace_manifest_signing.pub.pem
 ```
 
 ### Validation
@@ -189,6 +192,7 @@ TRACE is designed around the following controls:
 - dual-coder support and IRR computation
 - package verification against exported manifest hashes
 - examiner override rationale preservation in classified output
+- detached signature verification for signed manifests
 
 ## Project policies
 
