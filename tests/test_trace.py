@@ -20,6 +20,7 @@ from trace.report import sign_manifest, verify_manifest_signature, verify_signin
 from trace.storage import read_json
 from trace.storage import write_json
 from trace.validation import (
+    apply_comparison_assessments,
     benchmark_profile_settings,
     build_history_trend_summary,
     compare_benchmark_summaries,
@@ -347,7 +348,7 @@ commonName = supplied
             root = Path(tmp)
             baseline = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "heuristic", profile="heuristic")
             candidate = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "hosted", profile="hosted")
-            comparison = compare_benchmark_summaries(baseline, candidate)
+            comparison = apply_comparison_assessments(compare_benchmark_summaries(baseline, candidate))
             self.assertTrue(comparison["drift_free"])
             artifacts = write_comparison_artifacts(comparison, root / "compare_artifacts")
             self.assertTrue(artifacts["json"].exists())
@@ -365,6 +366,7 @@ commonName = supplied
                     "candidate_profile": "hosted",
                     "drift_count": 0,
                     "drift_free": True,
+                    "provider_drift_policy": {"status": "pass"},
                 },
             },
             {
@@ -374,6 +376,7 @@ commonName = supplied
                     "candidate_profile": "hosted",
                     "drift_count": 1,
                     "drift_free": False,
+                    "provider_drift_policy": {"status": "warn"},
                 },
             },
         ]
@@ -381,6 +384,48 @@ commonName = supplied
         self.assertEqual(summary["series_type"], "comparison")
         self.assertEqual(summary["drift_count_delta"], 1)
         self.assertEqual(summary["drift_free_snapshots"], 1)
+        self.assertEqual(summary["latest_policy_status"], "warn")
+        self.assertEqual(summary["policy_warn_or_fail_snapshots"], 1)
+
+    def test_live_hosted_provider_drift_policy(self) -> None:
+        comparison = apply_comparison_assessments(
+            {
+                "baseline_profile": "heuristic",
+                "baseline_profile_settings": {},
+                "candidate_profile": "live-hosted",
+                "candidate_profile_settings": {"provider": "openrouter", "model": "openrouter/free", "window_size": 8},
+                "references_compared": 2,
+                "drift_count": 2,
+                "drift_free": False,
+                "comparisons": [
+                    {
+                        "reference_name": "companion_incident.json",
+                        "behavioral_delta": -25.0,
+                        "vulnerability_delta": -75.0,
+                        "findings_changed": False,
+                        "threshold_changed": True,
+                        "drift_detected": True,
+                        "baseline_pass": True,
+                        "candidate_pass": False,
+                    },
+                    {
+                        "reference_name": "reference_noisy_case.json",
+                        "behavioral_delta": 0.0,
+                        "vulnerability_delta": -50.0,
+                        "findings_changed": True,
+                        "threshold_changed": True,
+                        "drift_detected": True,
+                        "baseline_pass": True,
+                        "candidate_pass": False,
+                    },
+                ],
+            }
+        )
+        policy = comparison["provider_drift_policy"]
+        self.assertTrue(policy["policy_applied"])
+        self.assertEqual(policy["status"], "warn")
+        self.assertGreaterEqual(policy["warning_count"], 3)
+        self.assertIn("Provider drift triggered", policy["summary"])
 
     def test_signed_benchmark_artifact_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

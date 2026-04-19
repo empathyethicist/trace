@@ -1,0 +1,64 @@
+{
+  "label": "benchmark_live-hosted_latest",
+  "generated_at": "2026-04-19T15:28:02+00:00",
+  "payload": {
+    "profile": "live-hosted",
+    "total_fixtures": 5,
+    "passed_fixtures": 2,
+    "failed_fixtures": 3,
+    "pass_rate": 40.0,
+    "total_elapsed_seconds": 397.5752,
+    "results": [
+      {
+        "reference_name": "companion_incident.json",
+        "profile": "live-hosted",
+        "behavioral_agreement": 75.0,
+        "vulnerability_agreement": 25.0,
+        "findings_match": true,
+        "pass_thresholds": false,
+        "elapsed_seconds": 95.3765
+      },
+      {
+        "reference_name": "reference_benign_case.json",
+        "profile": "live-hosted",
+        "behavioral_agreement": 100.0,
+        "vulnerability_agreement": 100.0,
+        "findings_match": true,
+        "pass_thresholds": true,
+        "elapsed_seconds": 7.8674
+      },
+      {
+        "reference_name": "reference_long_case.json",
+        "profile": "live-hosted",
+        "behavioral_agreement": 87.5,
+        "vulnerability_agreement": 12.5,
+        "findings_match": true,
+        "pass_thresholds": false,
+        "elapsed_seconds": 196.111
+      },
+      {
+        "reference_name": "reference_mixed_case.json",
+        "profile": "live-hosted",
+        "behavioral_agreement": 100.0,
+        "vulnerability_agreement": 100.0,
+        "findings_match": true,
+        "pass_thresholds": true,
+        "elapsed_seconds": 48.668
+      },
+      {
+        "reference_name": "reference_noisy_case.json",
+        "profile": "live-hosted",
+        "behavioral_agreement": 100.0,
+        "vulnerability_agreement": 50.0,
+        "findings_match": false,
+        "pass_thresholds": false,
+        "elapsed_seconds": 49.5523
+      }
+    ],
+    "profile_settings": {
+      "provider": "openrouter",
+      "model": "openrouter/free",
+      "window_size": 8
+    }
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "label": "benchmark_compare_heuristic_vs_live-hosted_latest",
+  "generated_at": "2026-04-19T15:19:45+00:00",
+  "payload": {
+    "baseline_profile": "heuristic",
+    "candidate_profile": "live-hosted",
+    "references_compared": 5,
+    "drift_count": 4,
+    "drift_free": false,
+    "comparisons": [
+      {
+        "reference_name": "companion_incident.json",
+        "baseline_profile": "heuristic",
+        "candidate_profile": "live-hosted",
+        "behavioral_delta": -25.0,
+        "vulnerability_delta": -75.0,
+        "findings_changed": false,
+        "threshold_changed": true,
+        "drift_detected": true,
+        "baseline_pass": true,
+        "candidate_pass": false
+      },
+      {
+        "reference_name": "reference_benign_case.json",
+        "baseline_profile": "heuristic",
+        "candidate_profile": "live-hosted",
+        "behavioral_delta": 0.0,
+        "vulnerability_delta": 0.0,
+        "findings_changed": false,
+        "threshold_changed": false,
+        "drift_detected": false,
+        "baseline_pass": true,
+        "candidate_pass": true
+      },
+      {
+        "reference_name": "reference_long_case.json",
+        "baseline_profile": "heuristic",
+        "candidate_profile": "live-hosted",
+        "behavioral_delta": -12.5,
+        "vulnerability_delta": -87.5,
+        "findings_changed": false,
+        "threshold_changed": true,
+        "drift_detected": true,
+        "baseline_pass": true,
+        "candidate_pass": false
+      },
+      {
+        "reference_name": "reference_mixed_case.json",
+        "baseline_profile": "heuristic",
+        "candidate_profile": "live-hosted",
+        "behavioral_delta": 0.0,
+        "vulnerability_delta": -25.0,
+        "findings_changed": false,
+        "threshold_changed": true,
+        "drift_detected": true,
+        "baseline_pass": true,
+        "candidate_pass": false
+      },
+      {
+        "reference_name": "reference_noisy_case.json",
+        "baseline_profile": "heuristic",
+        "candidate_profile": "live-hosted",
+        "behavioral_delta": 0.0,
+        "vulnerability_delta": -50.0,
+        "findings_changed": true,
+        "threshold_changed": true,
+        "drift_detected": true,
+        "baseline_pass": true,
+        "candidate_pass": false
+      }
+    ],
+    "baseline_profile_settings": {},
+    "candidate_profile_settings": {
+      "provider": "openrouter",
+      "model": "openrouter/free",
+      "window_size": 8
+    }
+  }
+}

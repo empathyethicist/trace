@@ -7,6 +7,8 @@ This directory contains sample TRACE outputs intended to help reviewers understa
 - `companion_incident_package/`
 - `benchmark_artifacts/`
 - `benchmark_comparison/`
+- `benchmark_artifacts/live_hosted/`
+- `benchmark_comparison_live_hosted/`
 - `benchmark_history/`
 
 This package was generated from the repository validation fixture using the current TRACE pipeline and demonstrates:
@@ -22,6 +24,7 @@ The benchmark artifacts demonstrate:
 
 - heuristic-profile benchmark summary output
 - hosted-profile benchmark summary output
+- live-hosted benchmark summary output
 - JSON and Markdown benchmark artifacts suitable for review or archival
 - detached benchmark artifact manifests, signatures, and trust metadata
 - reproducible verification targets for reviewer spot-checks
@@ -31,6 +34,16 @@ The benchmark comparison demonstrates:
 - profile-to-profile drift analysis
 - zero-drift reporting across the bundled validation corpus
 - JSON and Markdown comparison artifacts for reproducibility
+
+The live-hosted comparison demonstrates:
+
+- drift between the deterministic heuristic baseline and a real hosted-provider run
+- signed artifact preservation for that drift evidence
+- the current need to treat live-provider benchmarking as an observational quality signal rather than a release-pass gate
+
+The current committed `live_hosted` example was produced against `openrouter/free` and shows non-zero drift relative to the heuristic baseline. That result is intentional to demonstrate how TRACE records live-provider divergence instead of hiding it.
+
+That divergence should be interpreted together with `docs/PROVIDER_DRIFT_POLICY.md`.
 
 The benchmark history demonstrates:
 
@@ -56,6 +69,16 @@ openssl dgst -sha256 -verify \
   -signature examples/benchmark_comparison/artifact_manifest.sig \
   examples/benchmark_comparison/artifact_manifest.json
 
+openssl dgst -sha256 -verify \
+  examples/benchmark_artifacts/live_hosted/live_public.pem \
+  -signature examples/benchmark_artifacts/live_hosted/artifact_manifest.sig \
+  examples/benchmark_artifacts/live_hosted/artifact_manifest.json
+
+openssl dgst -sha256 -verify \
+  examples/benchmark_comparison_live_hosted/live_public.pem \
+  -signature examples/benchmark_comparison_live_hosted/artifact_manifest.sig \
+  examples/benchmark_comparison_live_hosted/artifact_manifest.json
+
 trace benchmark-history \
   --history-dir ./examples/benchmark_history \
   --prefix benchmark_heuristic_latest
@@ -63,4 +86,8 @@ trace benchmark-history \
 trace benchmark-trend \
   --history-dir ./examples/benchmark_history \
   --prefix benchmark_heuristic_latest
+
+trace benchmark-trend \
+  --history-dir ./examples/benchmark_history \
+  --prefix benchmark_live-hosted_latest
 ```

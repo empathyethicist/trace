@@ -1,0 +1,149 @@
+{
+  "baseline_profile": "heuristic",
+  "baseline_profile_settings": {},
+  "candidate_profile": "live-hosted",
+  "candidate_profile_settings": {
+    "provider": "openrouter",
+    "model": "openrouter/free",
+    "window_size": 8
+  },
+  "references_compared": 5,
+  "drift_count": 3,
+  "drift_free": false,
+  "comparisons": [
+    {
+      "reference_name": "companion_incident.json",
+      "baseline_profile": "heuristic",
+      "candidate_profile": "live-hosted",
+      "behavioral_delta": -25.0,
+      "vulnerability_delta": -75.0,
+      "findings_changed": false,
+      "threshold_changed": true,
+      "drift_detected": true,
+      "baseline_pass": true,
+      "candidate_pass": false
+    },
+    {
+      "reference_name": "reference_benign_case.json",
+      "baseline_profile": "heuristic",
+      "candidate_profile": "live-hosted",
+      "behavioral_delta": 0.0,
+      "vulnerability_delta": 0.0,
+      "findings_changed": false,
+      "threshold_changed": false,
+      "drift_detected": false,
+      "baseline_pass": true,
+      "candidate_pass": true
+    },
+    {
+      "reference_name": "reference_long_case.json",
+      "baseline_profile": "heuristic",
+      "candidate_profile": "live-hosted",
+      "behavioral_delta": -12.5,
+      "vulnerability_delta": -87.5,
+      "findings_changed": false,
+      "threshold_changed": true,
+      "drift_detected": true,
+      "baseline_pass": true,
+      "candidate_pass": false
+    },
+    {
+      "reference_name": "reference_mixed_case.json",
+      "baseline_profile": "heuristic",
+      "candidate_profile": "live-hosted",
+      "behavioral_delta": 0.0,
+      "vulnerability_delta": 0.0,
+      "findings_changed": false,
+      "threshold_changed": false,
+      "drift_detected": false,
+      "baseline_pass": true,
+      "candidate_pass": true
+    },
+    {
+      "reference_name": "reference_noisy_case.json",
+      "baseline_profile": "heuristic",
+      "candidate_profile": "live-hosted",
+      "behavioral_delta": 0.0,
+      "vulnerability_delta": -50.0,
+      "findings_changed": true,
+      "threshold_changed": true,
+      "drift_detected": true,
+      "baseline_pass": true,
+      "candidate_pass": false
+    }
+  ],
+  "provider_drift_policy": {
+    "candidate_profile": "live-hosted",
+    "policy_applied": true,
+    "status": "warn",
+    "mode": "warning",
+    "violations": [
+      {
+        "scope": "global",
+        "reference_name": null,
+        "metric": "drift_count",
+        "expected_max": 1,
+        "actual": 3,
+        "severity": "warning",
+        "message": "Drift count exceeds configured threshold."
+      },
+      {
+        "scope": "reference",
+        "reference_name": "companion_incident.json",
+        "metric": "behavioral_delta",
+        "expected_max": 10.0,
+        "actual": -25.0,
+        "severity": "warning",
+        "message": "Behavioral agreement drift exceeds configured threshold."
+      },
+      {
+        "scope": "reference",
+        "reference_name": "companion_incident.json",
+        "metric": "vulnerability_delta",
+        "expected_max": 25.0,
+        "actual": -75.0,
+        "severity": "warning",
+        "message": "Vulnerability agreement drift exceeds configured threshold."
+      },
+      {
+        "scope": "reference",
+        "reference_name": "reference_long_case.json",
+        "metric": "behavioral_delta",
+        "expected_max": 10.0,
+        "actual": -12.5,
+        "severity": "warning",
+        "message": "Behavioral agreement drift exceeds configured threshold."
+      },
+      {
+        "scope": "reference",
+        "reference_name": "reference_long_case.json",
+        "metric": "vulnerability_delta",
+        "expected_max": 25.0,
+        "actual": -87.5,
+        "severity": "warning",
+        "message": "Vulnerability agreement drift exceeds configured threshold."
+      },
+      {
+        "scope": "reference",
+        "reference_name": "reference_noisy_case.json",
+        "metric": "vulnerability_delta",
+        "expected_max": 25.0,
+        "actual": -50.0,
+        "severity": "warning",
+        "message": "Vulnerability agreement drift exceeds configured threshold."
+      },
+      {
+        "scope": "reference",
+        "reference_name": "reference_noisy_case.json",
+        "metric": "findings_changed",
+        "expected_max": false,
+        "actual": true,
+        "severity": "warning",
+        "message": "Findings drift is not allowed for this reference."
+      }
+    ],
+    "warning_count": 7,
+    "failure_count": 0,
+    "summary": "Provider drift triggered 7 policy violations."
+  }
+}

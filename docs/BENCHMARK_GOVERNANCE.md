@@ -28,6 +28,10 @@ The current `hosted` profile is a controlled mock-hosted benchmark path. It is u
 
 The `live-hosted` profile is the external-provider benchmark path. It is intended for pre-release validation against a real hosted model and requires `OPENROUTER_API_KEY`. Unless overridden, TRACE uses `openrouter/free`. Releases should record the exact hosted model identifier used for any live-provider benchmark artifact set.
 
+At the current project stage, `live-hosted` should be treated as a provider-drift measurement workflow rather than a mandatory release gate. Its value is in exposing where externally hosted model behavior diverges from the deterministic baseline.
+
+Detailed interpretation rules for that drift are defined in `docs/PROVIDER_DRIFT_POLICY.md`.
+
 ## Acceptance thresholds
 
 A benchmark run is acceptable only when all of the following are true:

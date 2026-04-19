@@ -15,6 +15,7 @@ from trace.report import (
     verify_signing_certificate,
 )
 from trace.validation import (
+    apply_comparison_assessments,
     benchmark_profile_settings,
     build_history_trend_summary,
     compare_benchmark_summaries,
@@ -242,12 +243,16 @@ def main() -> None:
         benchmark_profile_settings(args.candidate_profile)
         baseline = run_benchmark_suite(Path(args.validation_dir), Path(args.root) / args.baseline_profile, profile=args.baseline_profile)
         candidate = run_benchmark_suite(Path(args.validation_dir), Path(args.root) / args.candidate_profile, profile=args.candidate_profile)
-        comparison = compare_benchmark_summaries(baseline, candidate)
+        comparison = apply_comparison_assessments(compare_benchmark_summaries(baseline, candidate))
         print(f"[BENCHMARK-COMPARE] Baseline: {comparison['baseline_profile']}")
         print(f"[BENCHMARK-COMPARE] Candidate: {comparison['candidate_profile']}")
         print(f"[BENCHMARK-COMPARE] References compared: {comparison['references_compared']}")
         print(f"[BENCHMARK-COMPARE] Drift count: {comparison['drift_count']}")
         print(f"[BENCHMARK-COMPARE] Drift free: {comparison['drift_free']}")
+        policy = comparison.get("provider_drift_policy", {})
+        if policy.get("policy_applied"):
+            print(f"[BENCHMARK-COMPARE] Policy status: {policy['status']}")
+            print(f"[BENCHMARK-COMPARE] Policy summary: {policy['summary']}")
         for item in comparison["comparisons"]:
             print(
                 "[BENCHMARK-COMPARE] "

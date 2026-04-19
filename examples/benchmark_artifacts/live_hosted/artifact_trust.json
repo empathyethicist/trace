@@ -1,0 +1,12 @@
+{
+  "signer_label": "TRACE live benchmark signer",
+  "public_key_path": "live_public.pem",
+  "public_key_sha256": "4198d6c70db62fd829458c2f8e3489d8be655704460cb0aa22051203288aa3ad",
+  "signing_certificate_path": "live_cert.pem",
+  "certificate_chain": [
+    {
+      "path": "live_chain.pem",
+      "sha256": "cc5187b4d72845ca5c44199685c1235f8c3f698b4f1c7bff09f4fe06ec2d7fbf"
+    }
+  ]
+}

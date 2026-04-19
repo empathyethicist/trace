@@ -122,6 +122,7 @@ trace benchmark --validation-dir ./validation
 trace benchmark --validation-dir ./validation --profile hosted --output-dir ./benchmark_artifacts
 trace benchmark --validation-dir ./validation --profile live-hosted --output-dir ./benchmark_artifacts_live
 trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile hosted --output-dir ./benchmark_comparison
+trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile live-hosted --output-dir ./benchmark_comparison_live
 trace benchmark-trend --history-dir ./benchmark_history --prefix benchmark_heuristic_latest
 trace benchmark --validation-dir ./validation --output-dir ./benchmark_artifacts --history-dir ./benchmark_history --sign-private-key ./keys/benchmark_signer.pem --sign-public-key ./keys/benchmark_signer_public.pem --signing-certificate ./keys/benchmark_signer.crt
 ```
@@ -226,12 +227,15 @@ TRACE is designed around the following controls:
 - Roadmap: `docs/ROADMAP.md`
 - Validation posture: `docs/VALIDATION.md`
 - Benchmark governance: `docs/BENCHMARK_GOVERNANCE.md`
+- Provider drift policy: `docs/PROVIDER_DRIFT_POLICY.md`
 - Release checklist: `docs/RELEASE_CHECKLIST.md`
 - Release tagging: `docs/RELEASE_TAGGING.md`
 - Evidence package specification: `docs/EVIDENCE_PACKAGE_SPEC.md`
 - Architecture: `docs/ARCHITECTURE.md`
 - Threat model: `docs/THREAT_MODEL.md`
 - Example exported artifacts: `examples/README.md`
+
+The repository also includes a signed `live_hosted` benchmark example and a signed `heuristic` vs `live-hosted` comparison example so external reviewers can inspect real provider drift rather than only mock-hosted behavior. The current committed live-provider example records observed drift against the heuristic baseline instead of presenting a sanitized pass-only story.
 
 ## Development notes
 

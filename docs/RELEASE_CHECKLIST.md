@@ -7,7 +7,7 @@ This checklist defines the minimum release gate for a public TRACE revision inte
 - Run the full unit and regression suite.
 - Run `trace benchmark --validation-dir ./validation --profile heuristic`.
 - Run `trace benchmark --validation-dir ./validation --profile hosted`.
-- Run `trace benchmark --validation-dir ./validation --profile live-hosted` when release credentials are available.
+- Run `trace benchmark --validation-dir ./validation --profile live-hosted` when release credentials are available and provider-drift evidence is desired.
 - Run `trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile hosted`.
 - Run `trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile live-hosted` when a live-provider run is included in release evidence.
 - Confirm:
@@ -28,6 +28,7 @@ This checklist defines the minimum release gate for a public TRACE revision inte
 - Update `README.md` if CLI or workflow behavior changed.
 - Update `docs/VALIDATION.md` if benchmark coverage or fixture expectations changed.
 - Update `docs/BENCHMARK_GOVERNANCE.md` if policy or interpretation changed.
+- Update `docs/PROVIDER_DRIFT_POLICY.md` if hosted-provider thresholds or interpretation changed.
 - Update `docs/RELEASE_TAGGING.md` if release-to-artifact linkage changed.
 - Update `examples/` artifacts if externally visible benchmark behavior changed.
 
@@ -53,3 +54,5 @@ The current hosted benchmark profile remains a mock-hosted workflow used for com
 ## Live-hosted profile note
 
 When credentials are available, `live-hosted` should be treated as the external-provider benchmark profile. It is appropriate for release evidence only when the emitted artifacts record the exact provider-backed model used and the signed benchmark bundle is archived with the release materials.
+
+At present, a live-provider run is best treated as drift evidence rather than as a required pass/fail release gate. If `live-hosted` diverges from the deterministic baseline, the release notes should say so explicitly rather than hiding the result.

@@ -25,6 +25,34 @@ class ValidationResult:
     elapsed_seconds: float
 
 
+PROVIDER_DRIFT_POLICY = {
+    "live-hosted": {
+        "mode": "warning",
+        "max_drift_count": 1,
+        "max_behavioral_delta": 10.0,
+        "max_vulnerability_delta": 15.0,
+        "allow_findings_changed": False,
+        "critical_references": {
+            "companion_incident.json": {
+                "max_behavioral_delta": 10.0,
+                "max_vulnerability_delta": 25.0,
+                "allow_findings_changed": False,
+            },
+            "reference_long_case.json": {
+                "max_behavioral_delta": 10.0,
+                "max_vulnerability_delta": 25.0,
+                "allow_findings_changed": False,
+            },
+            "reference_noisy_case.json": {
+                "max_behavioral_delta": 15.0,
+                "max_vulnerability_delta": 25.0,
+                "allow_findings_changed": False,
+            },
+        },
+    }
+}
+
+
 def benchmark_profile_settings(profile: str) -> dict:
     if profile == "heuristic":
         return {}
@@ -96,9 +124,11 @@ def discover_reference_fixtures(validation_dir: Path) -> list[Path]:
 
 
 def render_benchmark_markdown(summary: dict) -> str:
+    settings = summary.get("profile_settings", {})
     lines = [
         "# TRACE Benchmark Summary\n\n",
         f"- Profile: `{summary['profile']}`\n",
+        f"- Profile Settings: `{settings}`\n" if settings else "",
         f"- Fixtures: `{summary['total_fixtures']}`\n",
         f"- Passed: `{summary['passed_fixtures']}`\n",
         f"- Failed: `{summary['failed_fixtures']}`\n",
@@ -153,7 +183,9 @@ def compare_benchmark_summaries(baseline: dict, candidate: dict) -> dict:
         )
     return {
         "baseline_profile": baseline["profile"],
+        "baseline_profile_settings": baseline.get("profile_settings", {}),
         "candidate_profile": candidate["profile"],
+        "candidate_profile_settings": candidate.get("profile_settings", {}),
         "references_compared": len(comparisons),
         "drift_count": drift_count,
         "drift_free": drift_count == 0,
@@ -161,11 +193,109 @@ def compare_benchmark_summaries(baseline: dict, candidate: dict) -> dict:
     }
 
 
+def evaluate_provider_drift_policy(comparison: dict) -> dict:
+    policy = PROVIDER_DRIFT_POLICY.get(comparison["candidate_profile"])
+    if not policy:
+        return {
+            "candidate_profile": comparison["candidate_profile"],
+            "policy_applied": False,
+            "status": "not_applicable",
+            "mode": None,
+            "violations": [],
+            "warning_count": 0,
+            "failure_count": 0,
+            "summary": "No provider drift policy is defined for this candidate profile.",
+        }
+
+    violations = []
+    if comparison["drift_count"] > policy["max_drift_count"]:
+        violations.append(
+            {
+                "scope": "global",
+                "reference_name": None,
+                "metric": "drift_count",
+                "expected_max": policy["max_drift_count"],
+                "actual": comparison["drift_count"],
+                "severity": policy["mode"],
+                "message": "Drift count exceeds configured threshold.",
+            }
+        )
+
+    for item in comparison["comparisons"]:
+        reference_policy = policy.get("critical_references", {}).get(item["reference_name"], {})
+        max_behavioral_delta = reference_policy.get("max_behavioral_delta", policy["max_behavioral_delta"])
+        max_vulnerability_delta = reference_policy.get("max_vulnerability_delta", policy["max_vulnerability_delta"])
+        allow_findings_changed = reference_policy.get("allow_findings_changed", policy["allow_findings_changed"])
+
+        if abs(item["behavioral_delta"]) > max_behavioral_delta:
+            violations.append(
+                {
+                    "scope": "reference",
+                    "reference_name": item["reference_name"],
+                    "metric": "behavioral_delta",
+                    "expected_max": max_behavioral_delta,
+                    "actual": item["behavioral_delta"],
+                    "severity": policy["mode"],
+                    "message": "Behavioral agreement drift exceeds configured threshold.",
+                }
+            )
+        if abs(item["vulnerability_delta"]) > max_vulnerability_delta:
+            violations.append(
+                {
+                    "scope": "reference",
+                    "reference_name": item["reference_name"],
+                    "metric": "vulnerability_delta",
+                    "expected_max": max_vulnerability_delta,
+                    "actual": item["vulnerability_delta"],
+                    "severity": policy["mode"],
+                    "message": "Vulnerability agreement drift exceeds configured threshold.",
+                }
+            )
+        if item["findings_changed"] and not allow_findings_changed:
+            violations.append(
+                {
+                    "scope": "reference",
+                    "reference_name": item["reference_name"],
+                    "metric": "findings_changed",
+                    "expected_max": False,
+                    "actual": True,
+                    "severity": policy["mode"],
+                    "message": "Findings drift is not allowed for this reference.",
+                }
+            )
+
+    warning_count = sum(1 for item in violations if item["severity"] == "warning")
+    failure_count = sum(1 for item in violations if item["severity"] == "failure")
+    status = "pass"
+    if failure_count:
+        status = "fail"
+    elif warning_count:
+        status = "warn"
+
+    return {
+        "candidate_profile": comparison["candidate_profile"],
+        "policy_applied": True,
+        "status": status,
+        "mode": policy["mode"],
+        "violations": violations,
+        "warning_count": warning_count,
+        "failure_count": failure_count,
+        "summary": (
+            "Provider drift remains within configured bounds."
+            if not violations
+            else f"Provider drift triggered {len(violations)} policy violations."
+        ),
+    }
+
+
 def render_comparison_markdown(comparison: dict) -> str:
+    policy = comparison.get("provider_drift_policy")
     lines = [
         "# TRACE Benchmark Comparison\n\n",
         f"- Baseline Profile: `{comparison['baseline_profile']}`\n",
+        f"- Baseline Settings: `{comparison.get('baseline_profile_settings', {})}`\n",
         f"- Candidate Profile: `{comparison['candidate_profile']}`\n",
+        f"- Candidate Settings: `{comparison.get('candidate_profile_settings', {})}`\n",
         f"- References Compared: `{comparison['references_compared']}`\n",
         f"- Drift Count: `{comparison['drift_count']}`\n",
         f"- Drift Free: `{comparison['drift_free']}`\n\n",
@@ -177,6 +307,29 @@ def render_comparison_markdown(comparison: dict) -> str:
             f"| `{item['reference_name']}` | `{item['behavioral_delta']}` | `{item['vulnerability_delta']}` | "
             f"`{item['findings_changed']}` | `{item['threshold_changed']}` | `{item['drift_detected']}` |\n"
         )
+    if policy and policy.get("policy_applied"):
+        lines.extend(
+            [
+                "\n## Provider Drift Policy\n\n",
+                f"- Status: `{policy['status']}`\n",
+                f"- Mode: `{policy['mode']}`\n",
+                f"- Warning Count: `{policy['warning_count']}`\n",
+                f"- Failure Count: `{policy['failure_count']}`\n",
+                f"- Summary: {policy['summary']}\n",
+            ]
+        )
+        if policy["violations"]:
+            lines.extend(
+                [
+                    "\n| Scope | Reference | Metric | Expected Max | Actual | Severity |\n",
+                    "|---|---|---|---:|---:|---|\n",
+                ]
+            )
+            for violation in policy["violations"]:
+                lines.append(
+                    f"| `{violation['scope']}` | `{violation['reference_name'] or '-'}` | `{violation['metric']}` | "
+                    f"`{violation['expected_max']}` | `{violation['actual']}` | `{violation['severity']}` |\n"
+                )
     return "".join(lines)
 
 
@@ -320,6 +473,10 @@ def build_history_trend_summary(prefix: str, snapshots: list[dict]) -> dict:
     if series_type == "comparison":
         drift_values = [snapshot.get("payload", {}).get("drift_count", 0) for snapshot in snapshots]
         drift_free_count = sum(1 for snapshot in snapshots if snapshot.get("payload", {}).get("drift_free", False))
+        policy_status_values = [
+            snapshot.get("payload", {}).get("provider_drift_policy", {}).get("status", "not_applicable")
+            for snapshot in snapshots
+        ]
         summary.update(
             {
                 "baseline_profile": latest.get("baseline_profile"),
@@ -332,6 +489,8 @@ def build_history_trend_summary(prefix: str, snapshots: list[dict]) -> dict:
                 "max_drift_count": max(drift_values),
                 "min_drift_count": min(drift_values),
                 "drift_free_snapshots": drift_free_count,
+                "latest_policy_status": latest.get("provider_drift_policy", {}).get("status", "not_applicable"),
+                "policy_warn_or_fail_snapshots": sum(1 for value in policy_status_values if value in {"warn", "fail"}),
             }
         )
     return summary
@@ -372,6 +531,8 @@ def render_history_trend_markdown(summary: dict) -> str:
                 f"- Drift-Free Snapshots: `{summary['drift_free_snapshots']}` / `{summary['snapshot_count']}`\n",
                 f"- Min / Max Drift Count: `{summary['min_drift_count']}` / `{summary['max_drift_count']}`\n",
                 f"- Latest Drift-Free Status: `{summary['latest_drift_free']}`\n",
+                f"- Latest Policy Status: `{summary['latest_policy_status']}`\n",
+                f"- Warn/Fail Snapshots: `{summary['policy_warn_or_fail_snapshots']}`\n",
             ]
         )
     return "".join(lines)
@@ -476,6 +637,7 @@ def verify_artifact_bundle(output_dir: Path, public_key_path: Path) -> dict:
 
 
 def run_benchmark_suite(validation_dir: Path, working_root: Path, profile: str = "heuristic") -> dict:
+    settings = benchmark_profile_settings(profile)
     fixtures = discover_reference_fixtures(validation_dir)
     results = []
     for fixture in fixtures:
@@ -486,6 +648,7 @@ def run_benchmark_suite(validation_dir: Path, working_root: Path, profile: str =
     total_elapsed = round(sum(result["elapsed_seconds"] for result in results), 4)
     return {
         "profile": profile,
+        "profile_settings": settings,
         "total_fixtures": total,
         "passed_fixtures": passed,
         "failed_fixtures": total - passed,
@@ -493,3 +656,9 @@ def run_benchmark_suite(validation_dir: Path, working_root: Path, profile: str =
         "total_elapsed_seconds": total_elapsed,
         "results": results,
     }
+
+
+def apply_comparison_assessments(comparison: dict) -> dict:
+    enriched = dict(comparison)
+    enriched["provider_drift_policy"] = evaluate_provider_drift_policy(enriched)
+    return enriched

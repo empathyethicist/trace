@@ -1,0 +1,19 @@
+{
+  "prefix": "benchmark_compare_heuristic_vs_live-hosted_latest",
+  "series_type": "comparison",
+  "snapshot_count": 2,
+  "latest_generated_at": "2026-04-19T15:28:02+00:00",
+  "oldest_generated_at": "2026-04-19T15:19:45+00:00",
+  "baseline_profile": "heuristic",
+  "candidate_profile": "live-hosted",
+  "latest_drift_count": 3,
+  "oldest_drift_count": 4,
+  "drift_count_delta": -1,
+  "latest_drift_free": false,
+  "oldest_drift_free": false,
+  "max_drift_count": 4,
+  "min_drift_count": 3,
+  "drift_free_snapshots": 0,
+  "latest_policy_status": "warn",
+  "policy_warn_or_fail_snapshots": 1
+}

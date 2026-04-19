@@ -158,9 +158,14 @@ TRACE can also emit trend summaries derived from the dated history snapshots:
 
 These summarize pass-rate, failure-count, timing, or drift movement across the retained snapshot series.
 
+When run with provider credentials, TRACE can also emit a `live-hosted` benchmark artifact set and a `heuristic` vs `live-hosted` comparison artifact set. Those outputs should be interpreted as provider-drift evidence unless and until the project defines stable live-provider acceptance criteria.
+
+The currently committed `live_hosted` example artifacts document a real `openrouter/free` run that did not match the deterministic baseline on all fixtures. TRACE preserves that result as evidence of current hosted-provider variance.
+
 Governance expectations for benchmark acceptance and release review are defined in:
 
 - `docs/BENCHMARK_GOVERNANCE.md`
+- `docs/PROVIDER_DRIFT_POLICY.md`
 - `docs/RELEASE_CHECKLIST.md`
 
 ## What is not yet fully validated
