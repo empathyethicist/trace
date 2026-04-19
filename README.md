@@ -16,7 +16,15 @@ TRACE is currently a working pre-production implementation with:
 - structured evidence-package export with manifest, audit log, schema versions, prompt templates, and classified transcript outputs
 - validation fixtures and automated tests
 
-Current gaps to full production deployment include richer source parsers, PDF report generation, broader adversarial validation fixtures, and additional hardening for high-volume hosted-model execution.
+Current gaps to full production deployment include richer source parsers, PDF report generation, broader adversarial validation fixtures, and additional hardening for high-volume hosted-model execution. See `docs/ROADMAP.md`.
+
+## Forensic position
+
+TRACE is a decision-support and evidence-packaging tool for trained examiners.
+
+- TRACE does **not** make final forensic determinations.
+- TRACE does **not** replace expert review.
+- TRACE is designed to preserve provenance, human overrides, and repeatable outputs.
 
 ## Core capabilities
 
@@ -164,6 +172,13 @@ TRACE is designed around the following controls:
 - deterministic fallback behavior when provider output is unavailable or malformed
 - dual-coder support and IRR computation
 
+## Project policies
+
+- Contribution guidance: `CONTRIBUTING.md`
+- Security policy: `SECURITY.md`
+- Product intent: `docs/PRODUCT_GOALS.md`
+- Roadmap: `docs/ROADMAP.md`
+
 ## Development notes
 
 - Python 3.11+ is recommended.
@@ -172,4 +187,4 @@ TRACE is designed around the following controls:
 
 ## License
 
-Intended MIT-licensed project per the TRACE PRD. Add the formal `LICENSE` file before public release.
+MIT. See `LICENSE`.

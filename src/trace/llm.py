@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from hashlib import sha256
+from pathlib import Path
 
 from trace.heuristics import (
     classify_system_message,
@@ -20,6 +23,9 @@ class LLMConfig:
     temperature: float = 0.0
     endpoint: str = "http://localhost:11434/api/generate"
     api_key: str | None = None
+    cache_dir: Path | None = None
+    retry_attempts: int = 3
+    retry_backoff_seconds: float = 1.0
 
 
 def _json_request(url: str, payload: dict) -> dict:
@@ -42,6 +48,43 @@ def _json_request_with_headers(url: str, payload: dict, headers: dict[str, str])
     )
     with urllib.request.urlopen(request, timeout=90) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def _cache_key(kind: str, model: str, payload: dict) -> str:
+    encoded = json.dumps({"kind": kind, "model": model, "payload": payload}, sort_keys=True, ensure_ascii=False)
+    return sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _read_cache(config: LLMConfig, key: str) -> dict | None:
+    if not config.cache_dir:
+        return None
+    path = config.cache_dir / f"{key}.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _write_cache(config: LLMConfig, key: str, value: dict) -> None:
+    if not config.cache_dir:
+        return
+    config.cache_dir.mkdir(parents=True, exist_ok=True)
+    path = config.cache_dir / f"{key}.json"
+    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _request_with_retry(fetcher, attempts: int, backoff_seconds: float) -> dict:
+    last_error = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return fetcher()
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError, KeyError) as error:
+            last_error = error
+            if attempt == attempts:
+                break
+            time.sleep(backoff_seconds * attempt)
+    if last_error:
+        raise last_error
+    raise RuntimeError("Unreachable retry state")
 
 
 def _openrouter_api_key(config: LLMConfig) -> str | None:
@@ -211,16 +254,22 @@ def classify_system_with_provider(
             "target_content": content,
             "prior_user_vulnerability": prior_user_vulnerability,
         }
+        key = _cache_key("system", config.model, prompt)
         try:
-            response = _json_request(
-                config.endpoint,
-                {
-                    "model": config.model,
-                    "prompt": json.dumps(prompt),
-                    "stream": False,
-                    "options": {"temperature": config.temperature},
-                },
+            response = _read_cache(config, key) or _request_with_retry(
+                lambda: _json_request(
+                    config.endpoint,
+                    {
+                        "model": config.model,
+                        "prompt": json.dumps(prompt),
+                        "stream": False,
+                        "options": {"temperature": config.temperature},
+                    },
+                ),
+                config.retry_attempts,
+                config.retry_backoff_seconds,
             )
+            _write_cache(config, key, response)
             generated = response.get("response", "").strip()
             payload = json.loads(generated)
             return (
@@ -250,24 +299,31 @@ def classify_system_with_provider(
             f"Window messages: {json.dumps(window_messages, ensure_ascii=False)}\n"
             f"Target content: {content}\n"
         )
+        request_payload = {
+            "model": config.model,
+            "temperature": config.temperature,
+            "messages": [
+                {"role": "system", "content": "Return only valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        key = _cache_key("system", config.model, request_payload)
         try:
-            response = _json_request_with_headers(
-                "https://openrouter.ai/api/v1/chat/completions",
-                {
-                    "model": config.model,
-                    "temperature": config.temperature,
-                    "messages": [
-                        {"role": "system", "content": "Return only valid JSON."},
-                        {"role": "user", "content": prompt},
-                    ],
-                },
-                {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {api_key}",
-                    "HTTP-Referer": "https://github.com/heart-ai-foundation/trace",
-                    "X-Title": "TRACE",
-                },
+            response = _read_cache(config, key) or _request_with_retry(
+                lambda: _json_request_with_headers(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    request_payload,
+                    {
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {api_key}",
+                        "HTTP-Referer": "https://github.com/heart-ai-foundation/trace",
+                        "X-Title": "TRACE",
+                    },
+                ),
+                config.retry_attempts,
+                config.retry_backoff_seconds,
             )
+            _write_cache(config, key, response)
             generated = response["choices"][0]["message"]["content"]
             payload = _extract_json_object(generated)
             reasoning = str(payload["reasoning"])
@@ -316,16 +372,22 @@ def classify_user_with_provider(
             "window_messages": window_messages,
             "target_content": content,
         }
+        key = _cache_key("user", config.model, prompt)
         try:
-            response = _json_request(
-                config.endpoint,
-                {
-                    "model": config.model,
-                    "prompt": json.dumps(prompt),
-                    "stream": False,
-                    "options": {"temperature": config.temperature},
-                },
+            response = _read_cache(config, key) or _request_with_retry(
+                lambda: _json_request(
+                    config.endpoint,
+                    {
+                        "model": config.model,
+                        "prompt": json.dumps(prompt),
+                        "stream": False,
+                        "options": {"temperature": config.temperature},
+                    },
+                ),
+                config.retry_attempts,
+                config.retry_backoff_seconds,
             )
+            _write_cache(config, key, response)
             generated = response.get("response", "").strip()
             payload = json.loads(generated)
             return (
@@ -353,24 +415,31 @@ def classify_user_with_provider(
             f"Window messages: {json.dumps(window_messages, ensure_ascii=False)}\n"
             f"Target content: {content}\n"
         )
+        request_payload = {
+            "model": config.model,
+            "temperature": config.temperature,
+            "messages": [
+                {"role": "system", "content": "Return only valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        key = _cache_key("user", config.model, request_payload)
         try:
-            response = _json_request_with_headers(
-                "https://openrouter.ai/api/v1/chat/completions",
-                {
-                    "model": config.model,
-                    "temperature": config.temperature,
-                    "messages": [
-                        {"role": "system", "content": "Return only valid JSON."},
-                        {"role": "user", "content": prompt},
-                    ],
-                },
-                {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {api_key}",
-                    "HTTP-Referer": "https://github.com/heart-ai-foundation/trace",
-                    "X-Title": "TRACE",
-                },
+            response = _read_cache(config, key) or _request_with_retry(
+                lambda: _json_request_with_headers(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    request_payload,
+                    {
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {api_key}",
+                        "HTTP-Referer": "https://github.com/heart-ai-foundation/trace",
+                        "X-Title": "TRACE",
+                    },
+                ),
+                config.retry_attempts,
+                config.retry_backoff_seconds,
             )
+            _write_cache(config, key, response)
             generated = response["choices"][0]["message"]["content"]
             payload = _extract_json_object(generated)
             indicators = [str(item) for item in payload.get("indicators_observed", [])]

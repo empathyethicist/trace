@@ -90,6 +90,7 @@ def classify_case(
     classified: list[dict] = []
     current_user_vulnerability = 0
     config = LLMConfig(provider=provider, model=model, temperature=temperature)
+    config.cache_dir = case_dir / ".llm_cache"
 
     for index, message in enumerate(transcript):
         record = dict(message)

@@ -13,6 +13,23 @@ authors = [
   {name = "Dylan D. Mobley"}
 ]
 dependencies = []
+keywords = ["digital-forensics", "evidence", "ai-forensics", "conversational-forensics", "trace"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: Legal Industry",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Security",
+  "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+[project.urls]
+Homepage = "https://github.com/empathyethicist/trace"
+Repository = "https://github.com/empathyethicist/trace"
+Issues = "https://github.com/empathyethicist/trace/issues"
 
 [project.scripts]
 trace = "trace.cli:main"
