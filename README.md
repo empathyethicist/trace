@@ -121,6 +121,8 @@ trace validate --reference ./validation/reference_long_case.json
 trace benchmark --validation-dir ./validation
 trace benchmark --validation-dir ./validation --profile hosted --output-dir ./benchmark_artifacts
 trace benchmark --validation-dir ./validation --profile live-hosted --output-dir ./benchmark_artifacts_live
+trace benchmark --validation-dir ./validation --profile live-hosted --replay-dir ./replay_artifacts --replay-mode record --output-dir ./benchmark_artifacts_live
+trace benchmark-replay --validation-dir ./validation --profile live-hosted --replay-dir ./replay_artifacts --output-dir ./benchmark_artifacts_replay
 trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile hosted --output-dir ./benchmark_comparison
 trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile live-hosted --output-dir ./benchmark_comparison_live
 trace benchmark-trend --history-dir ./benchmark_history --prefix benchmark_heuristic_latest
@@ -197,6 +199,8 @@ trace validate --reference ./validation/companion_incident.json
 trace benchmark --validation-dir ./validation
 trace benchmark --validation-dir ./validation --profile hosted --output-dir ./benchmark_artifacts
 trace benchmark --validation-dir ./validation --profile live-hosted --output-dir ./benchmark_artifacts_live
+trace benchmark --validation-dir ./validation --profile live-hosted --replay-dir ./replay_artifacts --replay-mode record --output-dir ./benchmark_artifacts_live
+trace benchmark-replay --validation-dir ./validation --profile live-hosted --replay-dir ./replay_artifacts --output-dir ./benchmark_artifacts_replay
 trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile hosted --output-dir ./benchmark_comparison
 trace benchmark-history --history-dir ./benchmark_history --prefix benchmark_heuristic_latest
 trace benchmark-trend --history-dir ./benchmark_history --prefix benchmark_heuristic_latest

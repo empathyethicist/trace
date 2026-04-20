@@ -90,6 +90,8 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark.add_argument("--signer-label", default="TRACE benchmark signer")
     benchmark.add_argument("--signing-certificate")
     benchmark.add_argument("--certificate-chain", action="append", default=[])
+    benchmark.add_argument("--replay-dir")
+    benchmark.add_argument("--replay-mode", default="off", choices=["off", "record", "record-and-replay", "replay-only"])
 
     compare = sub.add_parser("benchmark-compare")
     compare.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
@@ -103,6 +105,21 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--signer-label", default="TRACE benchmark signer")
     compare.add_argument("--signing-certificate")
     compare.add_argument("--certificate-chain", action="append", default=[])
+    compare.add_argument("--replay-dir")
+    compare.add_argument("--replay-mode", default="off", choices=["off", "record", "record-and-replay", "replay-only"])
+
+    benchmark_replay = sub.add_parser("benchmark-replay")
+    benchmark_replay.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
+    benchmark_replay.add_argument("--root", default=str(DEFAULT_ROOT))
+    benchmark_replay.add_argument("--profile", default="live-hosted", choices=["hosted", "live-hosted"])
+    benchmark_replay.add_argument("--replay-dir", required=True)
+    benchmark_replay.add_argument("--output-dir")
+    benchmark_replay.add_argument("--history-dir")
+    benchmark_replay.add_argument("--sign-private-key")
+    benchmark_replay.add_argument("--sign-public-key")
+    benchmark_replay.add_argument("--signer-label", default="TRACE benchmark signer")
+    benchmark_replay.add_argument("--signing-certificate")
+    benchmark_replay.add_argument("--certificate-chain", action="append", default=[])
 
     verify = sub.add_parser("verify-package")
     verify.add_argument("--package", required=True)
@@ -194,7 +211,13 @@ def main() -> None:
 
     if args.command == "benchmark":
         benchmark_profile_settings(args.profile)
-        summary = run_benchmark_suite(Path(args.validation_dir), Path(args.root), profile=args.profile)
+        summary = run_benchmark_suite(
+            Path(args.validation_dir),
+            Path(args.root),
+            profile=args.profile,
+            replay_dir=Path(args.replay_dir) if args.replay_dir else None,
+            replay_mode=args.replay_mode,
+        )
         print(f"[BENCHMARK] Fixtures: {summary['total_fixtures']}")
         print(f"[BENCHMARK] Passed: {summary['passed_fixtures']}")
         print(f"[BENCHMARK] Failed: {summary['failed_fixtures']}")
@@ -242,11 +265,74 @@ def main() -> None:
             print(f"[BENCHMARK] Trend summary Markdown: {trend['markdown']}")
         return
 
+    if args.command == "benchmark-replay":
+        benchmark_profile_settings(args.profile)
+        summary = run_benchmark_suite(
+            Path(args.validation_dir),
+            Path(args.root),
+            profile=args.profile,
+            replay_dir=Path(args.replay_dir),
+            replay_mode="replay-only",
+        )
+        print(f"[BENCHMARK-REPLAY] Fixtures: {summary['total_fixtures']}")
+        print(f"[BENCHMARK-REPLAY] Passed: {summary['passed_fixtures']}")
+        print(f"[BENCHMARK-REPLAY] Failed: {summary['failed_fixtures']}")
+        print(f"[BENCHMARK-REPLAY] Pass rate: {summary['pass_rate']}%")
+        print(f"[BENCHMARK-REPLAY] Profile: {summary['profile']}")
+        for result in summary["results"]:
+            print(
+                "[BENCHMARK-REPLAY] "
+                f"{result['reference_name']}: "
+                f"behavior={result['behavioral_agreement']:.1f}% "
+                f"vulnerability={result['vulnerability_agreement']:.1f}% "
+                f"findings_match={result['findings_match']} "
+                f"pass={result['pass_thresholds']}"
+            )
+        if args.output_dir:
+            artifacts = write_benchmark_artifacts(summary, Path(args.output_dir))
+            print(f"[BENCHMARK-REPLAY] JSON artifact: {artifacts['json']}")
+            print(f"[BENCHMARK-REPLAY] Markdown artifact: {artifacts['markdown']}")
+            if args.sign_private_key and args.sign_public_key:
+                signed = sign_artifact_bundle(
+                    Path(args.output_dir),
+                    Path(args.sign_private_key),
+                    Path(args.sign_public_key),
+                    args.signer_label,
+                    Path(args.signing_certificate) if args.signing_certificate else None,
+                    [Path(item) for item in args.certificate_chain],
+                )
+                verified = verify_artifact_bundle(Path(args.output_dir), Path(args.sign_public_key))
+                print(f"[BENCHMARK-REPLAY] Artifact manifest: {signed['manifest']}")
+                print(f"[BENCHMARK-REPLAY] Artifact signature: {signed['signature']}")
+                print(f"[BENCHMARK-REPLAY] Artifact trust: {signed['trust']}")
+                print(f"[BENCHMARK-REPLAY] Artifact verification pass: {verified['all_pass']}")
+        if args.history_dir:
+            snapshot = write_artifact_history_snapshot(summary, Path(args.history_dir), f"benchmark_{args.profile}_replay_latest")
+            print(f"[BENCHMARK-REPLAY] History snapshot latest: {snapshot['latest']}")
+            print(f"[BENCHMARK-REPLAY] History snapshot dated: {snapshot['dated']}")
+            history = write_history_summary(Path(args.history_dir), f"benchmark_{args.profile}_replay_latest")
+            trend = write_history_trend_summary(Path(args.history_dir), f"benchmark_{args.profile}_replay_latest")
+            print(f"[BENCHMARK-REPLAY] History summary JSON: {history['json']}")
+            print(f"[BENCHMARK-REPLAY] Trend summary JSON: {trend['json']}")
+        return
+
     if args.command == "benchmark-compare":
         benchmark_profile_settings(args.baseline_profile)
         benchmark_profile_settings(args.candidate_profile)
-        baseline = run_benchmark_suite(Path(args.validation_dir), Path(args.root) / args.baseline_profile, profile=args.baseline_profile)
-        candidate = run_benchmark_suite(Path(args.validation_dir), Path(args.root) / args.candidate_profile, profile=args.candidate_profile)
+        baseline = run_benchmark_suite(
+            Path(args.validation_dir),
+            Path(args.root) / args.baseline_profile,
+            profile=args.baseline_profile,
+            replay_dir=(Path(args.replay_dir) / args.baseline_profile) if args.replay_dir else None,
+            replay_mode=args.replay_mode,
+        )
+        candidate = run_benchmark_suite(
+            Path(args.validation_dir),
+            Path(args.root) / args.candidate_profile,
+            profile=args.candidate_profile,
+            replay_dir=(Path(args.replay_dir) / args.candidate_profile) if args.replay_dir else None,
+            replay_mode=args.replay_mode,
+        )
         comparison = apply_comparison_assessments(compare_benchmark_summaries(baseline, candidate))
         print(f"[BENCHMARK-COMPARE] Baseline: {comparison['baseline_profile']}")
         print(f"[BENCHMARK-COMPARE] Candidate: {comparison['candidate_profile']}")

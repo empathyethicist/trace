@@ -332,6 +332,31 @@ commonName = supplied
             self.assertEqual(hosted["profile"], "hosted")
             self.assertEqual(hosted["failed_fixtures"], 0)
 
+    def test_benchmark_suite_replay_only_uses_recorded_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            validation_dir = Path(__file__).resolve().parent.parent / "validation"
+            recorded = run_benchmark_suite(
+                validation_dir,
+                root / "recorded",
+                profile="hosted",
+                replay_dir=root / "replay",
+                replay_mode="record",
+            )
+            replayed = run_benchmark_suite(
+                validation_dir,
+                root / "replayed",
+                profile="hosted",
+                replay_dir=root / "replay",
+                replay_mode="replay-only",
+            )
+            self.assertEqual(recorded["failed_fixtures"], 0)
+            self.assertEqual(replayed["failed_fixtures"], 0)
+            self.assertEqual(
+                [item["vulnerability_agreement"] for item in recorded["results"]],
+                [item["vulnerability_agreement"] for item in replayed["results"]],
+            )
+
     def test_live_hosted_profile_settings(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
             with self.assertRaises(ValueError):

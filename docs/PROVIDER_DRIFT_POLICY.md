@@ -16,6 +16,12 @@ TRACE future-proofs against provider drift by separating:
 
 The objective is not to eliminate drift. The objective is to detect it quickly, record it faithfully, and prevent it from silently changing TRACE's effective behavior.
 
+Replay artifacts are a key part of that posture. They let TRACE distinguish:
+
+- live provider behavior
+- provider/network execution instability
+- calibration and comparison logic inside TRACE
+
 ## Current controls
 
 TRACE currently applies the following controls:

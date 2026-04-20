@@ -168,6 +168,12 @@ When run with provider credentials, TRACE can also emit a `live-hosted` benchmar
 
 The currently committed `live_hosted` example artifacts document a real `openrouter/free` run that did not match the deterministic baseline on all fixtures. TRACE preserves that result as evidence of current hosted-provider variance.
 
+TRACE can also benchmark from recorded provider outputs instead of a live provider session:
+
+- record provider outputs during a benchmark-capable classification workflow
+- rerun `benchmark-replay` against the captured replay directory
+- compare replay-derived artifacts locally without new network calls
+
 Governance expectations for benchmark acceptance and release review are defined in:
 
 - `docs/BENCHMARK_GOVERNANCE.md`

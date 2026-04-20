@@ -90,14 +90,26 @@ def benchmark_profile_settings(profile: str) -> dict:
     raise ValueError(f"Unsupported benchmark profile: {profile}")
 
 
-def run_validation(reference_path: Path, working_root: Path, profile: str = "heuristic") -> ValidationResult:
+def run_validation(
+    reference_path: Path,
+    working_root: Path,
+    profile: str = "heuristic",
+    replay_dir: Path | None = None,
+    replay_mode: str = "off",
+) -> ValidationResult:
     start = perf_counter()
     reference = read_json(reference_path)
     case_id = reference["case_id"]
     case_root = working_root / "cases"
     ingest_case(reference_path, case_id, "validator", "json", case_root)
     classify_kwargs = benchmark_profile_settings(profile)
-    classify_case(case_root / case_id, "validator", **classify_kwargs)
+    classify_case(
+        case_root / case_id,
+        "validator",
+        replay_dir=replay_dir,
+        replay_mode=replay_mode,
+        **classify_kwargs,
+    )
     classified = read_json(case_root / case_id / "classified_transcript.json")
     transcript = classified["transcript"]
     expected = reference["expected"]
@@ -695,12 +707,25 @@ def verify_artifact_bundle(output_dir: Path, public_key_path: Path) -> dict:
     return result
 
 
-def run_benchmark_suite(validation_dir: Path, working_root: Path, profile: str = "heuristic") -> dict:
+def run_benchmark_suite(
+    validation_dir: Path,
+    working_root: Path,
+    profile: str = "heuristic",
+    replay_dir: Path | None = None,
+    replay_mode: str = "off",
+) -> dict:
     settings = benchmark_profile_settings(profile)
     fixtures = discover_reference_fixtures(validation_dir)
     results = []
     for fixture in fixtures:
-        result = run_validation(fixture, working_root / fixture.stem, profile=profile)
+        fixture_replay_dir = replay_dir / fixture.stem if replay_dir else None
+        result = run_validation(
+            fixture,
+            working_root / fixture.stem,
+            profile=profile,
+            replay_dir=fixture_replay_dir,
+            replay_mode=replay_mode,
+        )
         results.append(asdict(result))
     total = len(results)
     passed = sum(1 for result in results if result["pass_thresholds"])
@@ -708,6 +733,8 @@ def run_benchmark_suite(validation_dir: Path, working_root: Path, profile: str =
     return {
         "profile": profile,
         "profile_settings": settings,
+        "replay_mode": replay_mode,
+        "replay_dir": str(replay_dir) if replay_dir else None,
         "total_fixtures": total,
         "passed_fixtures": passed,
         "failed_fixtures": total - passed,
