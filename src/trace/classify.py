@@ -17,6 +17,37 @@ class ClassificationResult:
     message_count: int
 
 
+def calibrate_user_vulnerability_from_state(
+    level: int,
+    indicators: list[str],
+    confidence: float,
+    reasoning: str,
+    prior_user_vulnerabilities: list[int],
+) -> tuple[int, float, str]:
+    if not prior_user_vulnerabilities:
+        return level, confidence, reasoning
+    recent = prior_user_vulnerabilities[-2:]
+    prior_max = max(recent, default=0)
+    has_signal = bool(indicators)
+    calibrated_level = level
+    calibrated_reasoning = reasoning
+    calibrated_confidence = confidence
+
+    if prior_max >= 4 and level >= 3:
+        calibrated_level = max(level, 4)
+    elif prior_max >= 3 and level >= 2 and has_signal:
+        calibrated_level = max(level, 3)
+
+    if calibrated_level > level:
+        calibrated_confidence = max(confidence, 0.8)
+        calibrated_reasoning = (
+            f"{reasoning} "
+            f"TRACE state calibration raised vulnerability from {level} to {calibrated_level} "
+            f"based on recent elevated user-risk trajectory."
+        ).strip()
+    return calibrated_level, calibrated_confidence, calibrated_reasoning
+
+
 def build_state_summary(classified_messages: list[dict], window_size: int = 20) -> str:
     relevant = classified_messages[-window_size:]
     max_vuln = max(
@@ -91,6 +122,7 @@ def classify_case(
     transcript = source["transcript"]
     classified: list[dict] = []
     current_user_vulnerability = 0
+    prior_user_vulnerabilities: list[int] = []
     config = LLMConfig(provider=provider, model=model, temperature=temperature)
     config.cache_dir = case_dir / ".llm_cache"
 
@@ -105,6 +137,14 @@ def classify_case(
                 window_messages,
                 config,
             )
+            if provider in {"openrouter", "ollama"}:
+                level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+                    level,
+                    indicators,
+                    confidence,
+                    reasoning,
+                    prior_user_vulnerabilities,
+                )
             record["vulnerability"] = level
             record["classification"] = {
                 "schema_version": VULNERABILITY_SCHEMA_VERSION,
@@ -119,6 +159,7 @@ def classify_case(
             }
             record["classification"] = review_classification(record, review_mode)
             current_user_vulnerability = level
+            prior_user_vulnerabilities.append(level)
         else:
             category, subcategory, role, confidence, reasoning = classify_system_with_provider(
                 record["content"],

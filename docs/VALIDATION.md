@@ -14,6 +14,7 @@ TRACE currently validates the following:
 - transcript structure and speaker constraints
 - deterministic classification-path behavior
 - hosted vulnerability calibration against crisis-indicator under-classification
+- state-aware hosted vulnerability escalation across repeated elevated-risk turns
 - correlation-analysis output generation
 - evidence-package artifact creation
 - evidence-package hash verification

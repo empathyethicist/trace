@@ -95,3 +95,5 @@ That is the correct forensic posture. It preserves repeatability while still mea
 ## Current calibration note
 
 TRACE now applies a conservative calibration layer to hosted user-vulnerability outputs before final schema mapping. If the hosted provider under-classifies a message that contains direct lexical crisis indicators already recognized by TRACE's deterministic baseline, TRACE raises the vulnerability level to the higher deterministic value and records that calibration in the reasoning string.
+
+TRACE also applies a state-aware escalation rule. When recent user turns already indicate elevated risk, a later hosted-provider output that still shows distress indicators cannot silently drop back to a low-risk label without passing through a conservative trajectory check.

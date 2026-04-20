@@ -7,6 +7,7 @@ import subprocess
 from unittest.mock import patch
 
 from trace.classify import classify_case
+from trace.classify import calibrate_user_vulnerability_from_state
 from trace.ingest import (
     ingest_case,
     parse_axiom_json_records,
@@ -244,6 +245,18 @@ commonName = supplied
         self.assertIn("do not want to be here", " ".join(indicators))
         self.assertGreaterEqual(confidence, 0.9)
         self.assertIn("TRACE calibration raised vulnerability", reasoning)
+
+    def test_state_calibration_raises_repeated_distress(self) -> None:
+        level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+            2,
+            ["lonely", "upset"],
+            0.6,
+            "Provider classified moderate distress.",
+            [3, 4],
+        )
+        self.assertEqual(level, 3)
+        self.assertGreaterEqual(confidence, 0.8)
+        self.assertIn("TRACE state calibration raised vulnerability", reasoning)
 
     def test_irr_metrics(self) -> None:
         self.assertAlmostEqual(cohen_kappa(["a", "a", "b"], ["a", "a", "b"]), 1.0)
