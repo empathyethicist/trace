@@ -14,6 +14,7 @@ from trace.heuristics import (
     classify_user_message,
 )
 from trace.schemas import AI_ROLES, BEHAVIORAL_SCHEMA
+from trace.storage import append_jsonl, utc_now_iso
 
 
 @dataclass
@@ -24,6 +25,8 @@ class LLMConfig:
     endpoint: str = "http://localhost:11434/api/generate"
     api_key: str | None = None
     cache_dir: Path | None = None
+    replay_dir: Path | None = None
+    replay_mode: str = "off"
     retry_attempts: int = 3
     retry_backoff_seconds: float = 1.0
 
@@ -72,6 +75,52 @@ def _write_cache(config: LLMConfig, key: str, value: dict) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def _replay_log_path(config: LLMConfig) -> Path | None:
+    if not config.replay_dir:
+        return None
+    return config.replay_dir / "provider_replay.jsonl"
+
+
+def _read_replay_response(config: LLMConfig, key: str) -> dict | None:
+    path = _replay_log_path(config)
+    if not path or not path.exists():
+        return None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        if record.get("key") == key and record.get("raw_response") is not None:
+            return record["raw_response"]
+    return None
+
+
+def _record_replay_response(
+    config: LLMConfig,
+    *,
+    key: str,
+    kind: str,
+    provider: str,
+    model: str,
+    request_payload: dict,
+    raw_response: dict,
+) -> None:
+    path = _replay_log_path(config)
+    if not path:
+        return
+    append_jsonl(
+        path,
+        {
+            "timestamp": utc_now_iso(),
+            "key": key,
+            "kind": kind,
+            "provider": provider,
+            "model": model,
+            "request_payload": request_payload,
+            "raw_response": raw_response,
+        },
+    )
+
+
 def _request_with_retry(fetcher, attempts: int, backoff_seconds: float) -> dict:
     last_error = None
     for attempt in range(1, attempts + 1):
@@ -85,6 +134,40 @@ def _request_with_retry(fetcher, attempts: int, backoff_seconds: float) -> dict:
     if last_error:
         raise last_error
     raise RuntimeError("Unreachable retry state")
+
+
+def _fetch_or_replay_response(
+    config: LLMConfig,
+    *,
+    key: str,
+    kind: str,
+    provider: str,
+    model: str,
+    request_payload: dict,
+    fetcher,
+) -> dict:
+    cached = _read_cache(config, key)
+    if cached is not None:
+        return cached
+    replayed = _read_replay_response(config, key)
+    if replayed is not None:
+        _write_cache(config, key, replayed)
+        return replayed
+    if config.replay_mode == "replay-only":
+        raise ValueError(f"Replay-only mode could not find recorded response for key {key}")
+    response = _request_with_retry(fetcher, config.retry_attempts, config.retry_backoff_seconds)
+    _write_cache(config, key, response)
+    if config.replay_mode in {"record", "record-and-replay"}:
+        _record_replay_response(
+            config,
+            key=key,
+            kind=kind,
+            provider=provider,
+            model=model,
+            request_payload=request_payload,
+            raw_response=response,
+        )
+    return response
 
 
 def _openrouter_api_key(config: LLMConfig) -> str | None:
@@ -273,7 +356,33 @@ def classify_system_with_provider(
 
     if config.provider == "mock":
         category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
-        reasoning = f"Mock LLM suggestion using rolling-window state: {state_summary}"
+        request_payload = {
+            "state_summary": state_summary,
+            "window_messages": window_messages,
+            "target_content": content,
+            "prior_user_vulnerability": prior_user_vulnerability,
+        }
+        key = _cache_key("system", config.model, request_payload)
+        response = _fetch_or_replay_response(
+            config,
+            key=key,
+            kind="system",
+            provider="mock",
+            model=config.model,
+            request_payload=request_payload,
+            fetcher=lambda: {
+                "behavioral_category": category,
+                "behavioral_subcategory": subcategory,
+                "ai_role": role,
+                "confidence": confidence,
+                "reasoning": f"Mock LLM suggestion using rolling-window state: {state_summary}",
+            },
+        )
+        category = response["behavioral_category"]
+        subcategory = response["behavioral_subcategory"]
+        role = response["ai_role"]
+        confidence = float(response["confidence"])
+        reasoning = str(response["reasoning"])
         return category, subcategory, role, confidence, reasoning
 
     if config.provider == "ollama":
@@ -285,8 +394,19 @@ def classify_system_with_provider(
         }
         key = _cache_key("system", config.model, prompt)
         try:
-            response = _read_cache(config, key) or _request_with_retry(
-                lambda: _json_request(
+            response = _fetch_or_replay_response(
+                config,
+                key=key,
+                kind="system",
+                provider="ollama",
+                model=config.model,
+                request_payload={
+                    "model": config.model,
+                    "prompt": json.dumps(prompt),
+                    "stream": False,
+                    "options": {"temperature": config.temperature},
+                },
+                fetcher=lambda: _json_request(
                     config.endpoint,
                     {
                         "model": config.model,
@@ -295,10 +415,7 @@ def classify_system_with_provider(
                         "options": {"temperature": config.temperature},
                     },
                 ),
-                config.retry_attempts,
-                config.retry_backoff_seconds,
             )
-            _write_cache(config, key, response)
             generated = response.get("response", "").strip()
             payload = json.loads(generated)
             return (
@@ -338,8 +455,14 @@ def classify_system_with_provider(
         }
         key = _cache_key("system", config.model, request_payload)
         try:
-            response = _read_cache(config, key) or _request_with_retry(
-                lambda: _json_request_with_headers(
+            response = _fetch_or_replay_response(
+                config,
+                key=key,
+                kind="system",
+                provider="openrouter",
+                model=config.model,
+                request_payload=request_payload,
+                fetcher=lambda: _json_request_with_headers(
                     "https://openrouter.ai/api/v1/chat/completions",
                     request_payload,
                     {
@@ -349,10 +472,7 @@ def classify_system_with_provider(
                         "X-Title": "TRACE",
                     },
                 ),
-                config.retry_attempts,
-                config.retry_backoff_seconds,
             )
-            _write_cache(config, key, response)
             generated = response["choices"][0]["message"]["content"]
             payload = _extract_json_object(generated)
             reasoning = str(payload["reasoning"])
@@ -392,8 +512,33 @@ def classify_user_with_provider(
 
     if config.provider == "mock":
         level, indicators, confidence = classify_user_message(content)
-        reasoning = f"Mock LLM suggestion using rolling-window state: {state_summary}"
-        return level, indicators, confidence, reasoning
+        request_payload = {
+            "state_summary": state_summary,
+            "window_messages": window_messages,
+            "target_content": content,
+        }
+        key = _cache_key("user", config.model, request_payload)
+        response = _fetch_or_replay_response(
+            config,
+            key=key,
+            kind="user",
+            provider="mock",
+            model=config.model,
+            request_payload=request_payload,
+            fetcher=lambda: {
+                "vulnerability_level": level,
+                "indicators_observed": indicators,
+                "confidence": confidence,
+                "reasoning": f"Mock LLM suggestion using rolling-window state: {state_summary}",
+            },
+        )
+        return _calibrate_user_vulnerability(
+            content,
+            int(response["vulnerability_level"]),
+            [str(item) for item in response.get("indicators_observed", [])],
+            float(response["confidence"]),
+            str(response["reasoning"]),
+        )
 
     if config.provider == "ollama":
         prompt = {
@@ -403,8 +548,19 @@ def classify_user_with_provider(
         }
         key = _cache_key("user", config.model, prompt)
         try:
-            response = _read_cache(config, key) or _request_with_retry(
-                lambda: _json_request(
+            response = _fetch_or_replay_response(
+                config,
+                key=key,
+                kind="user",
+                provider="ollama",
+                model=config.model,
+                request_payload={
+                    "model": config.model,
+                    "prompt": json.dumps(prompt),
+                    "stream": False,
+                    "options": {"temperature": config.temperature},
+                },
+                fetcher=lambda: _json_request(
                     config.endpoint,
                     {
                         "model": config.model,
@@ -413,10 +569,7 @@ def classify_user_with_provider(
                         "options": {"temperature": config.temperature},
                     },
                 ),
-                config.retry_attempts,
-                config.retry_backoff_seconds,
             )
-            _write_cache(config, key, response)
             generated = response.get("response", "").strip()
             payload = json.loads(generated)
             return _calibrate_user_vulnerability(
@@ -455,8 +608,14 @@ def classify_user_with_provider(
         }
         key = _cache_key("user", config.model, request_payload)
         try:
-            response = _read_cache(config, key) or _request_with_retry(
-                lambda: _json_request_with_headers(
+            response = _fetch_or_replay_response(
+                config,
+                key=key,
+                kind="user",
+                provider="openrouter",
+                model=config.model,
+                request_payload=request_payload,
+                fetcher=lambda: _json_request_with_headers(
                     "https://openrouter.ai/api/v1/chat/completions",
                     request_payload,
                     {
@@ -466,10 +625,7 @@ def classify_user_with_provider(
                         "X-Title": "TRACE",
                     },
                 ),
-                config.retry_attempts,
-                config.retry_backoff_seconds,
             )
-            _write_cache(config, key, response)
             generated = response["choices"][0]["message"]["content"]
             payload = _extract_json_object(generated)
             indicators = [str(item) for item in payload.get("indicators_observed", [])]

@@ -117,6 +117,8 @@ def classify_case(
     temperature: float = 0.0,
     window_size: int = 20,
     review_mode: str = "auto",
+    replay_dir: Path | None = None,
+    replay_mode: str = "off",
 ) -> ClassificationResult:
     source = read_json(case_dir / "source_transcript.json")
     transcript = source["transcript"]
@@ -125,6 +127,8 @@ def classify_case(
     prior_user_vulnerabilities: list[int] = []
     config = LLMConfig(provider=provider, model=model, temperature=temperature)
     config.cache_dir = case_dir / ".llm_cache"
+    config.replay_dir = replay_dir
+    config.replay_mode = replay_mode
 
     for index, message in enumerate(transcript):
         record = dict(message)

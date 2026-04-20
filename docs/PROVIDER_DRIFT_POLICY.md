@@ -23,6 +23,7 @@ TRACE currently applies the following controls:
 - exact provider/model/window metadata recorded in benchmark artifacts
 - fixture-level benchmark metadata (`sensitivity`, `tags`) recorded in validation fixtures
 - hosted vulnerability calibration against direct lexical crisis indicators
+- hosted response capture and replay for provider-stable re-analysis
 - deterministic `heuristic` benchmark baseline
 - mock-hosted benchmark path for workflow stability
 - live-hosted benchmark path for real provider observation

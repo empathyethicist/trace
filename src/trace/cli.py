@@ -56,6 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
     classify.add_argument("--temperature", type=float, default=0.0)
     classify.add_argument("--window-size", type=int, default=20)
     classify.add_argument("--review-mode", default="auto", choices=["auto", "flag-low-confidence", "interactive"])
+    classify.add_argument("--replay-dir")
+    classify.add_argument("--replay-mode", default="off", choices=["off", "record", "record-and-replay", "replay-only"])
 
     irr_import = sub.add_parser("irr-import")
     irr_import.add_argument("--case-id", required=True)
@@ -155,6 +157,8 @@ def main() -> None:
             temperature=args.temperature,
             window_size=args.window_size,
             review_mode=args.review_mode,
+            replay_dir=Path(args.replay_dir) if args.replay_dir else None,
+            replay_mode=args.replay_mode,
         )
         print(f"[CLASSIFY] Classified {result.message_count} messages")
         print(f"[CLASSIFY] Output: {result.classified_path}")

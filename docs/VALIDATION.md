@@ -15,6 +15,7 @@ TRACE currently validates the following:
 - deterministic classification-path behavior
 - hosted vulnerability calibration against crisis-indicator under-classification
 - state-aware hosted vulnerability escalation across repeated elevated-risk turns
+- hosted response capture and replay workflow for repeatable provider analysis
 - correlation-analysis output generation
 - evidence-package artifact creation
 - evidence-package hash verification

@@ -233,6 +233,36 @@ commonName = supplied
             self.assertEqual(classified["llm_provider"], "mock")
             self.assertEqual(classified["window_size"], 4)
 
+    def test_replay_only_uses_recorded_provider_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            replay_dir = root / "replay"
+            replay_dir.mkdir(parents=True, exist_ok=True)
+            ingest_case(FIXTURE, "CASE-REPLAY", "tester", "json", root / "cases")
+            classify_case(
+                root / "cases" / "CASE-REPLAY",
+                "tester",
+                provider="mock",
+                model="mock-model",
+                replay_dir=replay_dir,
+                replay_mode="record",
+            )
+            replay_log = replay_dir / "provider_replay.jsonl"
+            self.assertTrue(replay_log.exists())
+
+            ingest_case(FIXTURE, "CASE-REPLAY-2", "tester", "json", root / "cases")
+            result = classify_case(
+                root / "cases" / "CASE-REPLAY-2",
+                "tester",
+                provider="mock",
+                model="mock-model",
+                replay_dir=replay_dir,
+                replay_mode="replay-only",
+            )
+            self.assertEqual(result.message_count, 8)
+            classified = read_json(root / "cases" / "CASE-REPLAY-2" / "classified_transcript.json")
+            self.assertEqual(classified["llm_provider"], "mock")
+
     def test_user_vulnerability_calibration_raises_crisis_underclassification(self) -> None:
         level, indicators, confidence, reasoning = _calibrate_user_vulnerability(
             "I do not want to be here anymore.",
