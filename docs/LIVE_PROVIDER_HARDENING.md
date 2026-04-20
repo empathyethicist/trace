@@ -73,6 +73,13 @@ Provider drift policy result for that run:
 - `status: pass`
 - `summary: Provider drift remains within configured bounds.`
 
+Committed example artifacts for that hardened replay state are available at:
+
+- `examples/benchmark_artifacts/live_hosted_hardened/benchmark_summary.json`
+- `examples/benchmark_artifacts/live_hosted_hardened/benchmark_summary.md`
+- `examples/benchmark_comparison_live_hosted_hardened/benchmark_comparison.json`
+- `examples/benchmark_comparison_live_hosted_hardened/benchmark_comparison.md`
+
 The remaining live-provider disagreement is therefore narrow:
 
 - no observed behavioral classification drift on the crisis-sensitive replay set

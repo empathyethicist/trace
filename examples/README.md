@@ -8,7 +8,9 @@ This directory contains sample TRACE outputs intended to help reviewers understa
 - `benchmark_artifacts/`
 - `benchmark_comparison/`
 - `benchmark_artifacts/live_hosted/`
+- `benchmark_artifacts/live_hosted_hardened/`
 - `benchmark_comparison_live_hosted/`
+- `benchmark_comparison_live_hosted_hardened/`
 - `benchmark_history/`
 
 This package was generated from the repository validation fixture using the current TRACE pipeline and demonstrates:
@@ -44,6 +46,19 @@ The live-hosted comparison demonstrates:
 The current committed `live_hosted` example was produced against `openrouter/free` and shows non-zero drift relative to the heuristic baseline. That result is intentional to demonstrate how TRACE records live-provider divergence instead of hiding it.
 
 That divergence should be interpreted together with `docs/PROVIDER_DRIFT_POLICY.md`.
+
+The `live_hosted_hardened` and `benchmark_comparison_live_hosted_hardened` examples capture the replay-driven hardening state reached on April 19, 2026 after hosted vulnerability calibration and trajectory-tightening work. Those artifacts show:
+
+- `0.0` behavioral delta across the crisis-sensitive replay set
+- `0.0` vulnerability delta for `companion_incident.json`
+- `0.0` vulnerability delta for `reference_noisy_case.json`
+- residual `-12.5` vulnerability delta for `reference_long_case.json`
+- provider drift policy status of `pass`
+
+Those hardened replay artifacts should be interpreted together with:
+
+- `docs/LIVE_PROVIDER_HARDENING.md`
+- `docs/PROVIDER_DRIFT_POLICY.md`
 
 The benchmark history demonstrates:
 

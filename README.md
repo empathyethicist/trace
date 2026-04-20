@@ -244,6 +244,8 @@ TRACE is designed around the following controls:
 
 The repository also includes a signed `live_hosted` benchmark example and a signed `heuristic` vs `live-hosted` comparison example so external reviewers can inspect real provider drift rather than only mock-hosted behavior. The current committed live-provider example records observed drift against the heuristic baseline instead of presenting a sanitized pass-only story.
 
+The repository also includes replay-hardened live-provider example artifacts under `examples/benchmark_artifacts/live_hosted_hardened/` and `examples/benchmark_comparison_live_hosted_hardened/` so reviewers can inspect the post-hardening bounded-drift state described in `docs/LIVE_PROVIDER_HARDENING.md`.
+
 ## Development notes
 
 - Python 3.11+ is recommended.
