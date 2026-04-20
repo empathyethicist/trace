@@ -230,6 +230,7 @@ TRACE is designed around the following controls:
 - Contribution guidance: `CONTRIBUTING.md`
 - Security policy: `SECURITY.md`
 - Product intent: `docs/PRODUCT_GOALS.md`
+- Adoption readiness: `docs/ADOPTION_READINESS.md`
 - Roadmap: `docs/ROADMAP.md`
 - Validation posture: `docs/VALIDATION.md`
 - Benchmark governance: `docs/BENCHMARK_GOVERNANCE.md`
