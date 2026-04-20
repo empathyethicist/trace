@@ -104,3 +104,17 @@ That is the correct forensic posture. It preserves repeatability while still mea
 TRACE now applies a conservative calibration layer to hosted user-vulnerability outputs before final schema mapping. If the hosted provider under-classifies a message that contains direct lexical crisis indicators already recognized by TRACE's deterministic baseline, TRACE raises the vulnerability level to the higher deterministic value and records that calibration in the reasoning string.
 
 TRACE also applies a state-aware escalation rule. When recent user turns already indicate elevated risk, a later hosted-provider output that still shows distress indicators cannot silently drop back to a low-risk label without passing through a conservative trajectory check.
+
+TRACE now also constrains acute escalation more tightly: severe trajectory context alone is not sufficient to promote a hosted user-vulnerability classification from `3` to `4`. That promotion now requires explicit acute-crisis language in the current user turn. This prevents long-form severe distress from being automatically rewritten as acute crisis solely because of prior context.
+
+## April 19, 2026 hardening outcome
+
+On April 19, 2026, replay-based hardening of the `live-hosted` profile reduced the critical replay comparison to a single residual vulnerability delta on `reference_long_case.json` (`-12.5`) while keeping:
+
+- behavioral delta at `0.0` across the critical replay set
+- findings drift at `false` across the critical replay set
+- provider drift policy status at `pass`
+
+That result is documented in:
+
+- `docs/LIVE_PROVIDER_HARDENING.md`

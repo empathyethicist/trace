@@ -234,6 +234,7 @@ TRACE is designed around the following controls:
 - Validation posture: `docs/VALIDATION.md`
 - Benchmark governance: `docs/BENCHMARK_GOVERNANCE.md`
 - Provider drift policy: `docs/PROVIDER_DRIFT_POLICY.md`
+- Live-provider hardening notes: `docs/LIVE_PROVIDER_HARDENING.md`
 - Release checklist: `docs/RELEASE_CHECKLIST.md`
 - Release tagging: `docs/RELEASE_TAGGING.md`
 - Evidence package specification: `docs/EVIDENCE_PACKAGE_SPEC.md`

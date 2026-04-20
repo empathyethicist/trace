@@ -174,6 +174,19 @@ TRACE can also benchmark from recorded provider outputs instead of a live provid
 - rerun `benchmark-replay` against the captured replay directory
 - compare replay-derived artifacts locally without new network calls
 
+As of April 19, 2026, TRACE's replay-driven live-provider hardening work reduced the crisis-sensitive replay comparison to:
+
+- `0.0` behavioral delta on all three critical replay fixtures
+- `0.0` vulnerability delta on `companion_incident.json`
+- `0.0` vulnerability delta on `reference_noisy_case.json`
+- `-12.5` vulnerability delta on `reference_long_case.json`
+- no findings drift across the crisis-sensitive replay set
+- provider drift policy status of `pass`
+
+That hardening sequence and its operational interpretation are documented in:
+
+- `docs/LIVE_PROVIDER_HARDENING.md`
+
 Governance expectations for benchmark acceptance and release review are defined in:
 
 - `docs/BENCHMARK_GOVERNANCE.md`
