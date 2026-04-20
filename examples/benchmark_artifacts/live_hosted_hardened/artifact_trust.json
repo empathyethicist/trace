@@ -1,0 +1,12 @@
+{
+  "signer_label": "TRACE hardened benchmark signer",
+  "public_key_path": "hardened_public.pem",
+  "public_key_sha256": "9bccd6fd2c0afa7db1150afd092c9ed69164efda745849dda63a2fe69748a5eb",
+  "signing_certificate_path": "hardened_cert.pem",
+  "certificate_chain": [
+    {
+      "path": "hardened_chain.pem",
+      "sha256": "59886c0ea83af9fa2fb4919e36620976937f24aba6ae31f36dc1f612ddf85f20"
+    }
+  ]
+}

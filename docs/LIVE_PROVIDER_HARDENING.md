@@ -77,8 +77,12 @@ Committed example artifacts for that hardened replay state are available at:
 
 - `examples/benchmark_artifacts/live_hosted_hardened/benchmark_summary.json`
 - `examples/benchmark_artifacts/live_hosted_hardened/benchmark_summary.md`
+- `examples/benchmark_artifacts/live_hosted_hardened/artifact_manifest.json`
+- `examples/benchmark_artifacts/live_hosted_hardened/artifact_manifest.sig`
 - `examples/benchmark_comparison_live_hosted_hardened/benchmark_comparison.json`
 - `examples/benchmark_comparison_live_hosted_hardened/benchmark_comparison.md`
+- `examples/benchmark_comparison_live_hosted_hardened/artifact_manifest.json`
+- `examples/benchmark_comparison_live_hosted_hardened/artifact_manifest.sig`
 
 The remaining live-provider disagreement is therefore narrow:
 

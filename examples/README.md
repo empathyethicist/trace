@@ -60,6 +60,8 @@ Those hardened replay artifacts should be interpreted together with:
 - `docs/LIVE_PROVIDER_HARDENING.md`
 - `docs/PROVIDER_DRIFT_POLICY.md`
 
+The hardened artifact sets are also signed, so reviewers can verify integrity directly rather than relying on unsigned example output.
+
 The benchmark history demonstrates:
 
 - latest-snapshot records for heuristic, hosted, and comparison runs
@@ -93,6 +95,16 @@ openssl dgst -sha256 -verify \
   examples/benchmark_comparison_live_hosted/live_public.pem \
   -signature examples/benchmark_comparison_live_hosted/artifact_manifest.sig \
   examples/benchmark_comparison_live_hosted/artifact_manifest.json
+
+openssl dgst -sha256 -verify \
+  examples/benchmark_artifacts/live_hosted_hardened/hardened_public.pem \
+  -signature examples/benchmark_artifacts/live_hosted_hardened/artifact_manifest.sig \
+  examples/benchmark_artifacts/live_hosted_hardened/artifact_manifest.json
+
+openssl dgst -sha256 -verify \
+  examples/benchmark_comparison_live_hosted_hardened/hardened_public.pem \
+  -signature examples/benchmark_comparison_live_hosted_hardened/artifact_manifest.sig \
+  examples/benchmark_comparison_live_hosted_hardened/artifact_manifest.json
 
 trace benchmark-history \
   --history-dir ./examples/benchmark_history \

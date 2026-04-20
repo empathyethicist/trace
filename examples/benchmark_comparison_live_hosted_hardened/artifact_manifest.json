@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-04-20T02:32:48+00:00",
+  "signer_label": "TRACE hardened benchmark signer",
+  "files": [
+    {
+      "path": "benchmark_comparison.json",
+      "sha256": "7b3f1c10826f80499e250b481b103836e705bb0d99c571d727b80ea338aba0e5"
+    },
+    {
+      "path": "benchmark_comparison.md",
+      "sha256": "98d0f0571720c173f8e3d3de78f55c6ad8dcc0d0ef175e9ec943b5409875026b"
+    },
+    {
+      "path": "hardened_cert.pem",
+      "sha256": "3805471e72a29fe1b55120b04366d6fdb6ffb36d48b4cdcb4c411ce904745791"
+    },
+    {
+      "path": "hardened_chain.pem",
+      "sha256": "59886c0ea83af9fa2fb4919e36620976937f24aba6ae31f36dc1f612ddf85f20"
+    },
+    {
+      "path": "hardened_public.pem",
+      "sha256": "9bccd6fd2c0afa7db1150afd092c9ed69164efda745849dda63a2fe69748a5eb"
+    }
+  ]
+}
