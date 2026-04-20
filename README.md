@@ -1,8 +1,19 @@
 # TRACE
 
-TRACE (Trajectory Analysis for Conversational Evidence) is a forensic software implementation of the AI Behavioral Trajectory Forensics methodology. It ingests AI-human conversational transcripts, supports behavioral and vulnerability classification, computes correlation-based forensic findings, and exports auditable evidence packages for legal and investigative review.
+TRACE (Trajectory Analysis for Conversational Evidence) is forensic software for analyzing AI-human conversational evidence with repeatable classification, benchmark governance, and auditable evidence packages.
 
-The goal is not merely to produce a research prototype. TRACE is being built to the standard of a tool that digital forensic companies would actively want to adopt for real conversational-harm casework. See `docs/PRODUCT_GOALS.md`.
+TRACE implements the AI Behavioral Trajectory Forensics methodology. It ingests conversational transcripts, classifies system behavior and user vulnerability, computes repeatable forensic findings, and exports reviewable evidence packages for legal, investigative, and expert-review use.
+
+The project is being built as a serious forensic workflow candidate rather than a research demo. The design priorities are repeatability, auditability, and bounded hosted-model risk.
+
+## Start here
+
+- Executive overview: `docs/EXECUTIVE_SUMMARY.md`
+- External-facing brief: `docs/PARTNER_BRIEF.md`
+- Adoption posture: `docs/ADOPTION_READINESS.md`
+- Pilot plan: `docs/PILOT_EVALUATION.md`
+- Lab operations: `docs/LAB_DEPLOYMENT_NOTES.md`
+- Live-provider hardening: `docs/LIVE_PROVIDER_HARDENING.md`
 
 ## Status
 
@@ -21,7 +32,7 @@ TRACE is currently a working pre-production implementation with:
 - optional CRL-backed revocation checks during signing-certificate verification
 - validation fixtures and automated tests
 
-Current gaps to full production deployment include deeper parser coverage against vendor-native exports, broader adversarial validation fixtures, and additional hardening for high-volume hosted-model execution. See `docs/ROADMAP.md`.
+Current gaps to broader production deployment are primarily operational: deeper parser coverage, broader adversarial validation fixtures, and additional hardening for higher-volume hosted-model execution. See `docs/ROADMAP.md`.
 
 ## Forensic position
 
