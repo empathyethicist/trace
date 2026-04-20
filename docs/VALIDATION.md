@@ -13,6 +13,7 @@ TRACE currently validates the following:
 - ingest and normalization on supported input formats
 - transcript structure and speaker constraints
 - deterministic classification-path behavior
+- hosted vulnerability calibration against crisis-indicator under-classification
 - correlation-analysis output generation
 - evidence-package artifact creation
 - evidence-package hash verification

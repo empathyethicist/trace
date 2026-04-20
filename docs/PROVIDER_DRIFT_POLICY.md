@@ -22,6 +22,7 @@ TRACE currently applies the following controls:
 
 - exact provider/model/window metadata recorded in benchmark artifacts
 - fixture-level benchmark metadata (`sensitivity`, `tags`) recorded in validation fixtures
+- hosted vulnerability calibration against direct lexical crisis indicators
 - deterministic `heuristic` benchmark baseline
 - mock-hosted benchmark path for workflow stability
 - live-hosted benchmark path for real provider observation
@@ -90,3 +91,7 @@ Until live-provider variance is reduced and acceptance criteria are validated ov
 - `live-hosted` remains a drift-observation profile
 
 That is the correct forensic posture. It preserves repeatability while still measuring how hosted models behave in practice.
+
+## Current calibration note
+
+TRACE now applies a conservative calibration layer to hosted user-vulnerability outputs before final schema mapping. If the hosted provider under-classifies a message that contains direct lexical crisis indicators already recognized by TRACE's deterministic baseline, TRACE raises the vulnerability level to the higher deterministic value and records that calibration in the reasoning string.

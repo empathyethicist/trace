@@ -15,6 +15,7 @@ from trace.ingest import (
     parse_ufed_xml_records,
 )
 from trace.irr import cohen_kappa, compute_irr, import_second_coder, krippendorff_alpha_nominal, krippendorff_alpha_ordinal
+from trace.llm import _calibrate_user_vulnerability
 from trace.report import compute_findings, export_case_report, verify_evidence_package
 from trace.report import sign_manifest, verify_manifest_signature, verify_signing_certificate
 from trace.storage import read_json
@@ -230,6 +231,19 @@ commonName = supplied
             classified = read_json(root / "cases" / "CASE-MOCK" / "classified_transcript.json")
             self.assertEqual(classified["llm_provider"], "mock")
             self.assertEqual(classified["window_size"], 4)
+
+    def test_user_vulnerability_calibration_raises_crisis_underclassification(self) -> None:
+        level, indicators, confidence, reasoning = _calibrate_user_vulnerability(
+            "I do not want to be here anymore.",
+            1,
+            ["sad"],
+            0.55,
+            "Provider classified mild emotional distress.",
+        )
+        self.assertEqual(level, 4)
+        self.assertIn("do not want to be here", " ".join(indicators))
+        self.assertGreaterEqual(confidence, 0.9)
+        self.assertIn("TRACE calibration raised vulnerability", reasoning)
 
     def test_irr_metrics(self) -> None:
         self.assertAlmostEqual(cohen_kappa(["a", "a", "b"], ["a", "a", "b"]), 1.0)

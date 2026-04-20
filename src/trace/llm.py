@@ -159,6 +159,35 @@ def _normalize_vulnerability_level(value: object, indicators: list[str], reasoni
     return 0
 
 
+def _merge_indicators(provider_indicators: list[str], heuristic_indicators: list[str]) -> list[str]:
+    merged: list[str] = []
+    for item in provider_indicators + heuristic_indicators:
+        if item and item not in merged:
+            merged.append(item)
+    return merged
+
+
+def _calibrate_user_vulnerability(
+    content: str,
+    provider_level: int,
+    provider_indicators: list[str],
+    provider_confidence: float,
+    provider_reasoning: str,
+) -> tuple[int, list[str], float, str]:
+    heuristic_level, heuristic_indicators, heuristic_confidence = classify_user_message(content)
+    calibrated_level = max(provider_level, heuristic_level)
+    calibrated_indicators = _merge_indicators(provider_indicators, heuristic_indicators)
+    calibrated_confidence = max(provider_confidence, heuristic_confidence if heuristic_level > provider_level else provider_confidence)
+    calibrated_reasoning = provider_reasoning
+    if heuristic_level > provider_level:
+        calibrated_reasoning = (
+            f"{provider_reasoning} "
+            f"TRACE calibration raised vulnerability from {provider_level} to {heuristic_level} "
+            f"based on direct lexical crisis indicators."
+        ).strip()
+    return calibrated_level, calibrated_indicators, calibrated_confidence, calibrated_reasoning
+
+
 def _normalize_behavioral_output(
     category: object,
     subcategory: object,
@@ -390,9 +419,10 @@ def classify_user_with_provider(
             _write_cache(config, key, response)
             generated = response.get("response", "").strip()
             payload = json.loads(generated)
-            return (
+            return _calibrate_user_vulnerability(
+                content,
                 int(payload["vulnerability_level"]),
-                list(payload.get("indicators_observed", [])),
+                [str(item) for item in payload.get("indicators_observed", [])],
                 float(payload["confidence"]),
                 str(payload["reasoning"]),
             )
@@ -444,7 +474,8 @@ def classify_user_with_provider(
             payload = _extract_json_object(generated)
             indicators = [str(item) for item in payload.get("indicators_observed", [])]
             reasoning = str(payload["reasoning"])
-            return (
+            return _calibrate_user_vulnerability(
+                content,
                 _normalize_vulnerability_level(payload.get("vulnerability_level"), indicators, reasoning),
                 indicators,
                 _normalize_confidence(payload.get("confidence")),
