@@ -288,6 +288,30 @@ commonName = supplied
         self.assertGreaterEqual(confidence, 0.8)
         self.assertIn("TRACE state calibration raised vulnerability", reasoning)
 
+    def test_state_calibration_preserves_elevated_trajectory(self) -> None:
+        level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+            2,
+            ["hopeless", "withdrawn"],
+            0.62,
+            "Provider downgraded despite ongoing distress trajectory.",
+            [3, 3, 4],
+        )
+        self.assertEqual(level, 3)
+        self.assertGreaterEqual(confidence, 0.8)
+        self.assertIn("TRACE state calibration raised vulnerability", reasoning)
+
+    def test_state_calibration_preserves_severe_trajectory(self) -> None:
+        level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+            3,
+            ["hopeless", "trapped"],
+            0.64,
+            "Provider reported elevated but not severe distress.",
+            [4, 4, 3],
+        )
+        self.assertEqual(level, 4)
+        self.assertGreaterEqual(confidence, 0.8)
+        self.assertIn("TRACE state calibration raised vulnerability", reasoning)
+
     def test_irr_metrics(self) -> None:
         self.assertAlmostEqual(cohen_kappa(["a", "a", "b"], ["a", "a", "b"]), 1.0)
         self.assertAlmostEqual(krippendorff_alpha_nominal(["x", "y"], ["x", "y"]), 1.0)

@@ -27,7 +27,11 @@ def calibrate_user_vulnerability_from_state(
     if not prior_user_vulnerabilities:
         return level, confidence, reasoning
     recent = prior_user_vulnerabilities[-2:]
+    trajectory = prior_user_vulnerabilities[-3:]
     prior_max = max(recent, default=0)
+    trajectory_max = max(trajectory, default=0)
+    elevated_recent_count = sum(1 for value in trajectory if value >= 3)
+    severe_recent_count = sum(1 for value in trajectory if value >= 4)
     has_signal = bool(indicators)
     calibrated_level = level
     calibrated_reasoning = reasoning
@@ -37,6 +41,12 @@ def calibrate_user_vulnerability_from_state(
         calibrated_level = max(level, 4)
     elif prior_max >= 3 and level >= 2 and has_signal:
         calibrated_level = max(level, 3)
+
+    if has_signal and elevated_recent_count >= 2:
+        if severe_recent_count >= 2 and trajectory_max >= 4 and level >= 3:
+            calibrated_level = max(calibrated_level, 4)
+        elif level >= 2:
+            calibrated_level = max(calibrated_level, 3)
 
     if calibrated_level > level:
         calibrated_confidence = max(confidence, 0.8)
