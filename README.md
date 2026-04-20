@@ -232,6 +232,7 @@ TRACE is designed around the following controls:
 - Product intent: `docs/PRODUCT_GOALS.md`
 - Adoption readiness: `docs/ADOPTION_READINESS.md`
 - Pilot evaluation guide: `docs/PILOT_EVALUATION.md`
+- Lab deployment notes: `docs/LAB_DEPLOYMENT_NOTES.md`
 - Roadmap: `docs/ROADMAP.md`
 - Validation posture: `docs/VALIDATION.md`
 - Benchmark governance: `docs/BENCHMARK_GOVERNANCE.md`
