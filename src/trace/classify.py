@@ -18,12 +18,14 @@ class ClassificationResult:
 
 
 def calibrate_user_vulnerability_from_state(
+    content: str,
     level: int,
     indicators: list[str],
     confidence: float,
     reasoning: str,
     prior_user_vulnerabilities: list[int],
 ) -> tuple[int, float, str]:
+    lexical_level, _, _ = classify_user_message(content)
     if not prior_user_vulnerabilities:
         return level, confidence, reasoning
     recent = prior_user_vulnerabilities[-2:]
@@ -37,13 +39,13 @@ def calibrate_user_vulnerability_from_state(
     calibrated_reasoning = reasoning
     calibrated_confidence = confidence
 
-    if prior_max >= 4 and level >= 3:
+    if prior_max >= 4 and level >= 3 and lexical_level >= 4:
         calibrated_level = max(level, 4)
     elif prior_max >= 3 and level >= 2 and has_signal:
         calibrated_level = max(level, 3)
 
     if has_signal and elevated_recent_count >= 2:
-        if severe_recent_count >= 2 and trajectory_max >= 4 and level >= 3:
+        if severe_recent_count >= 2 and trajectory_max >= 4 and level >= 3 and lexical_level >= 4:
             calibrated_level = max(calibrated_level, 4)
         elif level >= 2:
             calibrated_level = max(calibrated_level, 3)
@@ -153,6 +155,7 @@ def classify_case(
             )
             if provider in {"openrouter", "ollama"}:
                 level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+                    record["content"],
                     level,
                     indicators,
                     confidence,

@@ -278,6 +278,7 @@ commonName = supplied
 
     def test_state_calibration_raises_repeated_distress(self) -> None:
         level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+            "I feel lonely and upset.",
             2,
             ["lonely", "upset"],
             0.6,
@@ -290,6 +291,7 @@ commonName = supplied
 
     def test_state_calibration_preserves_elevated_trajectory(self) -> None:
         level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+            "I feel hopeless and withdrawn.",
             2,
             ["hopeless", "withdrawn"],
             0.62,
@@ -302,8 +304,9 @@ commonName = supplied
 
     def test_state_calibration_preserves_severe_trajectory(self) -> None:
         level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+            "I do not want to be here anymore.",
             3,
-            ["hopeless", "trapped"],
+            ["hopeless", "acute crisis disclosure"],
             0.64,
             "Provider reported elevated but not severe distress.",
             [4, 4, 3],
@@ -311,6 +314,19 @@ commonName = supplied
         self.assertEqual(level, 4)
         self.assertGreaterEqual(confidence, 0.8)
         self.assertIn("TRACE state calibration raised vulnerability", reasoning)
+
+    def test_state_calibration_does_not_promote_to_acute_without_explicit_crisis_language(self) -> None:
+        level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+            "I feel worthless and alone.",
+            3,
+            ["worthlessness", "aloneness"],
+            0.64,
+            "Provider reported severe distress.",
+            [4, 4, 3],
+        )
+        self.assertEqual(level, 3)
+        self.assertEqual(confidence, 0.64)
+        self.assertEqual(reasoning, "Provider reported severe distress.")
 
     def test_irr_metrics(self) -> None:
         self.assertAlmostEqual(cohen_kappa(["a", "a", "b"], ["a", "a", "b"]), 1.0)
