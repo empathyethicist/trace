@@ -192,8 +192,12 @@ TRACE’s hosted integration surface is:
 - `TRACE_HOSTED_API_KEY`
 - `TRACE_HOSTED_BASE_URL`
 - `TRACE_HOSTED_MODEL` (optional)
+- `TRACE_HOSTED_ADAPTER` (optional, defaults to `openai-compatible`)
 
-TRACE currently expects an OpenAI-compatible chat-completions endpoint for hosted execution.
+TRACE currently supports explicit hosted adapters:
+
+- `openai-compatible`
+- `anthropic-messages`
 
 Minimal setup:
 
@@ -288,7 +292,7 @@ The repository also includes replay-hardened live-provider example artifacts und
 - Hosted-model execution may require API credentials and network access.
 - Hosted-provider testing is supported, but hosted providers may return schema-drifting output; TRACE normalizes common deviations and falls back safely when needed.
 - The `live-hosted` benchmark profile requires `TRACE_HOSTED_API_KEY` and `TRACE_HOSTED_BASE_URL`, and defaults to `provider-default` unless `TRACE_HOSTED_MODEL` is set.
-- Hosted execution currently assumes an OpenAI-compatible chat-completions endpoint. See `docs/HOSTED_PROVIDER_SETUP.md`.
+- Hosted execution currently supports the `openai-compatible` and `anthropic-messages` adapter contracts. See `docs/HOSTED_PROVIDER_SETUP.md`.
 - Hosted replay harness support is available through `trace classify --replay-dir ... --replay-mode record|replay-only` so provider outputs can be captured once and replayed locally.
 
 ## License

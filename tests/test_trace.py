@@ -18,6 +18,7 @@ from trace.ingest import (
 )
 from trace.irr import cohen_kappa, compute_irr, import_second_coder, krippendorff_alpha_nominal, krippendorff_alpha_ordinal
 from trace.llm import _calibrate_user_vulnerability
+from trace.llm import _build_hosted_headers, _build_hosted_request_payload, _extract_hosted_text
 from trace.report import compute_findings, export_case_report, verify_evidence_package
 from trace.report import sign_manifest, verify_manifest_signature, verify_signing_certificate
 from trace.storage import read_json
@@ -117,12 +118,77 @@ class TraceTests(unittest.TestCase):
         self.assertTrue(result["ready"])
         self.assertEqual(result["hosted_base_url"], "https://provider.example/v1/chat/completions")
         self.assertEqual(result["effective_model"], "provider-default")
+        self.assertEqual(result["hosted_adapter"], "openai-compatible")
+
+    def test_config_check_hosted_ready_with_anthropic_adapter(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {
+                "TRACE_HOSTED_API_KEY": "test-key",
+                "TRACE_HOSTED_BASE_URL": "https://provider.example/v1/messages",
+                "TRACE_HOSTED_MODEL": "provider-default",
+                "TRACE_HOSTED_ADAPTER": "anthropic-messages",
+            },
+            clear=True,
+        ):
+            result = evaluate_config("hosted")
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["hosted_adapter"], "anthropic-messages")
+
+    def test_config_check_hosted_rejects_unknown_adapter(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {
+                "TRACE_HOSTED_API_KEY": "test-key",
+                "TRACE_HOSTED_BASE_URL": "https://provider.example/v1/messages",
+                "TRACE_HOSTED_ADAPTER": "unknown-adapter",
+            },
+            clear=True,
+        ):
+            result = evaluate_config("hosted")
+        self.assertFalse(result["ready"])
+        self.assertIn("TRACE_HOSTED_ADAPTER must be one of: anthropic-messages, openai-compatible.", result["issues"])
 
     def test_config_check_local_runtime_defaults(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
             result = evaluate_config("ollama")
         self.assertTrue(result["ready"])
         self.assertEqual(result["local_runtime_base_url"], "http://localhost:11434/api/generate")
+
+    def test_hosted_adapter_payloads(self) -> None:
+        openai_payload = _build_hosted_request_payload(
+            "openai-compatible",
+            model="provider-default",
+            temperature=0.0,
+            prompt="hello",
+        )
+        anthropic_payload = _build_hosted_request_payload(
+            "anthropic-messages",
+            model="provider-default",
+            temperature=0.0,
+            prompt="hello",
+        )
+        self.assertIn("messages", openai_payload)
+        self.assertIn("messages", anthropic_payload)
+        self.assertIn("system", anthropic_payload)
+        self.assertEqual(anthropic_payload["max_tokens"], 800)
+
+    def test_hosted_adapter_headers_and_response_extraction(self) -> None:
+        openai_headers = _build_hosted_headers("openai-compatible", "test-key")
+        anthropic_headers = _build_hosted_headers("anthropic-messages", "test-key")
+        self.assertIn("Authorization", openai_headers)
+        self.assertIn("x-api-key", anthropic_headers)
+        self.assertEqual(
+            _extract_hosted_text("openai-compatible", {"choices": [{"message": {"content": "{\"ok\": true}"}}]}),
+            "{\"ok\": true}",
+        )
+        self.assertEqual(
+            _extract_hosted_text(
+                "anthropic-messages",
+                {"content": [{"type": "text", "text": "{\"ok\": true}"}]},
+            ),
+            "{\"ok\": true}",
+        )
 
     def test_parse_additional_formats(self) -> None:
         court = PARSER_FIXTURE_ROOT / "court_transcript.txt"
@@ -432,12 +498,17 @@ commonName = supplied
                 benchmark_profile_settings("live-hosted")
         with patch.dict(
             "os.environ",
-            {"TRACE_HOSTED_API_KEY": "test-key", "TRACE_HOSTED_MODEL": "provider-default"},
+            {
+                "TRACE_HOSTED_API_KEY": "test-key",
+                "TRACE_HOSTED_MODEL": "provider-default",
+                "TRACE_HOSTED_ADAPTER": "openai-compatible",
+            },
             clear=True,
         ):
             settings = benchmark_profile_settings("live-hosted")
         self.assertEqual(settings["provider"], "hosted")
         self.assertEqual(settings["model"], "provider-default")
+        self.assertEqual(settings["adapter"], "openai-compatible")
         self.assertEqual(settings["window_size"], 8)
 
     def test_benchmark_artifact_export(self) -> None:

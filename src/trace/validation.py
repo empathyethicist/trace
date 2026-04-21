@@ -85,6 +85,7 @@ def benchmark_profile_settings(profile: str) -> dict:
         return {
             "provider": "hosted",
             "model": os.environ.get("TRACE_HOSTED_MODEL", "provider-default"),
+            "adapter": os.environ.get("TRACE_HOSTED_ADAPTER", "openai-compatible"),
             "window_size": 8,
         }
     raise ValueError(f"Unsupported benchmark profile: {profile}")

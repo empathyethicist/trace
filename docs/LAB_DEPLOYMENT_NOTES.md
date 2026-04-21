@@ -92,8 +92,9 @@ TRACE’s current hosted interface expects:
 - `TRACE_HOSTED_API_KEY`
 - `TRACE_HOSTED_BASE_URL`
 - `TRACE_HOSTED_MODEL` (optional)
+- `TRACE_HOSTED_ADAPTER` (optional)
 
-The hosted path currently assumes an OpenAI-compatible chat-completions endpoint. See `docs/HOSTED_PROVIDER_SETUP.md`.
+The hosted path currently supports explicit adapter contracts rather than a single implicit provider assumption. See `docs/HOSTED_PROVIDER_SETUP.md`.
 
 Current TRACE posture assumes:
 

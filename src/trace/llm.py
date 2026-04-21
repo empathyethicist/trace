@@ -31,6 +31,9 @@ class LLMConfig:
     retry_backoff_seconds: float = 1.0
 
 
+SUPPORTED_HOSTED_ADAPTERS = {"openai-compatible", "anthropic-messages"}
+
+
 def _json_request(url: str, payload: dict) -> dict:
     request = urllib.request.Request(
         url,
@@ -179,6 +182,66 @@ def _hosted_base_url() -> str:
     if not base_url:
         raise ValueError("TRACE_HOSTED_BASE_URL is required for hosted provider execution")
     return base_url
+
+
+def _hosted_adapter(config: LLMConfig) -> str:
+    adapter = os.environ.get("TRACE_HOSTED_ADAPTER", "openai-compatible").strip().lower()
+    if adapter not in SUPPORTED_HOSTED_ADAPTERS:
+        raise ValueError(
+            f"TRACE_HOSTED_ADAPTER must be one of: {', '.join(sorted(SUPPORTED_HOSTED_ADAPTERS))}"
+        )
+    return adapter
+
+
+def _build_hosted_request_payload(adapter: str, *, model: str, temperature: float, prompt: str) -> dict:
+    if adapter == "openai-compatible":
+        return {
+            "model": model,
+            "temperature": temperature,
+            "messages": [
+                {"role": "system", "content": "Return only valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
+        }
+    if adapter == "anthropic-messages":
+        return {
+            "model": model,
+            "temperature": temperature,
+            "system": "Return only valid JSON.",
+            "max_tokens": 800,
+            "messages": [
+                {"role": "user", "content": prompt},
+            ],
+        }
+    raise ValueError(f"Unsupported hosted adapter: {adapter}")
+
+
+def _build_hosted_headers(adapter: str, api_key: str) -> dict[str, str]:
+    if adapter == "openai-compatible":
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "X-Title": "TRACE",
+        }
+    if adapter == "anthropic-messages":
+        return {
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+        }
+    raise ValueError(f"Unsupported hosted adapter: {adapter}")
+
+
+def _extract_hosted_text(adapter: str, response: dict) -> str:
+    if adapter == "openai-compatible":
+        return response["choices"][0]["message"]["content"]
+    if adapter == "anthropic-messages":
+        content_blocks = response.get("content", [])
+        text_parts = [str(block.get("text", "")) for block in content_blocks if isinstance(block, dict) and block.get("type") == "text"]
+        if not text_parts:
+            raise KeyError("No text content returned from anthropic-messages adapter response")
+        return "\n".join(part for part in text_parts if part).strip()
+    raise ValueError(f"Unsupported hosted adapter: {adapter}")
 
 
 def _extract_json_object(text: str) -> dict:
@@ -443,6 +506,7 @@ def classify_system_with_provider(
             category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
             reasoning = "Hosted provider API key unavailable; fell back to local heuristic."
             return category, subcategory, role, confidence, reasoning
+        adapter = _hosted_adapter(config)
         prompt = (
             "You are a forensic classification assistant. "
             "Return only valid JSON with keys behavioral_category, behavioral_subcategory, ai_role, reasoning, confidence. "
@@ -452,14 +516,12 @@ def classify_system_with_provider(
             f"Window messages: {json.dumps(window_messages, ensure_ascii=False)}\n"
             f"Target content: {content}\n"
         )
-        request_payload = {
-            "model": config.model,
-            "temperature": config.temperature,
-            "messages": [
-                {"role": "system", "content": "Return only valid JSON."},
-                {"role": "user", "content": prompt},
-            ],
-        }
+        request_payload = _build_hosted_request_payload(
+            adapter,
+            model=config.model,
+            temperature=config.temperature,
+            prompt=prompt,
+        )
         key = _cache_key("system", config.model, request_payload)
         try:
             response = _fetch_or_replay_response(
@@ -472,14 +534,10 @@ def classify_system_with_provider(
                 fetcher=lambda: _json_request_with_headers(
                     _hosted_base_url(),
                     request_payload,
-                    {
-                        "Content-Type": "application/json",
-                        "Authorization": f"Bearer {api_key}",
-                        "X-Title": "TRACE",
-                    },
+                    _build_hosted_headers(adapter, api_key),
                 ),
             )
-            generated = response["choices"][0]["message"]["content"]
+            generated = _extract_hosted_text(adapter, response)
             payload = _extract_json_object(generated)
             reasoning = str(payload["reasoning"])
             normalized_category, normalized_subcategory, normalized_role = _normalize_behavioral_output(
@@ -596,6 +654,7 @@ def classify_user_with_provider(
             level, indicators, confidence = classify_user_message(content)
             reasoning = "Hosted provider API key unavailable; fell back to local heuristic."
             return level, indicators, confidence, reasoning
+        adapter = _hosted_adapter(config)
         prompt = (
             "You are a forensic classification assistant. "
             "Return only valid JSON with keys vulnerability_level, indicators_observed, reasoning, confidence. "
@@ -604,14 +663,12 @@ def classify_user_with_provider(
             f"Window messages: {json.dumps(window_messages, ensure_ascii=False)}\n"
             f"Target content: {content}\n"
         )
-        request_payload = {
-            "model": config.model,
-            "temperature": config.temperature,
-            "messages": [
-                {"role": "system", "content": "Return only valid JSON."},
-                {"role": "user", "content": prompt},
-            ],
-        }
+        request_payload = _build_hosted_request_payload(
+            adapter,
+            model=config.model,
+            temperature=config.temperature,
+            prompt=prompt,
+        )
         key = _cache_key("user", config.model, request_payload)
         try:
             response = _fetch_or_replay_response(
@@ -624,14 +681,10 @@ def classify_user_with_provider(
                 fetcher=lambda: _json_request_with_headers(
                     _hosted_base_url(),
                     request_payload,
-                    {
-                        "Content-Type": "application/json",
-                        "Authorization": f"Bearer {api_key}",
-                        "X-Title": "TRACE",
-                    },
+                    _build_hosted_headers(adapter, api_key),
                 ),
             )
-            generated = response["choices"][0]["message"]["content"]
+            generated = _extract_hosted_text(adapter, response)
             payload = _extract_json_object(generated)
             indicators = [str(item) for item in payload.get("indicators_observed", [])]
             reasoning = str(payload["reasoning"])

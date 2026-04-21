@@ -143,7 +143,7 @@ The companion comparison workflow can emit:
 
 This supports explicit drift review between heuristic and hosted benchmark profiles.
 
-When provider credentials are available, the same workflow can be run with `--profile live-hosted` to benchmark against a real hosted provider. TRACE requires `TRACE_HOSTED_API_KEY` and `TRACE_HOSTED_BASE_URL` for this path and defaults to `provider-default` unless `TRACE_HOSTED_MODEL` is set.
+When provider credentials are available, the same workflow can be run with `--profile live-hosted` to benchmark against a real hosted provider. TRACE requires `TRACE_HOSTED_API_KEY` and `TRACE_HOSTED_BASE_URL` for this path, defaults to `provider-default` unless `TRACE_HOSTED_MODEL` is set, and uses the hosted adapter selected by `TRACE_HOSTED_ADAPTER`.
 
 The benchmark workflow can also emit history snapshots such as:
 

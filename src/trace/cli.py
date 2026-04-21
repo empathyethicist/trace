@@ -41,12 +41,14 @@ def evaluate_config(provider: str, model: str | None = None) -> dict:
     issues: list[str] = []
     notes: list[str] = []
     effective_model = model or os.environ.get("TRACE_HOSTED_MODEL") or "provider-default"
+    hosted_adapter = os.environ.get("TRACE_HOSTED_ADAPTER", "openai-compatible").strip().lower()
     payload = {
         "provider": provider,
         "ready": True,
         "issues": issues,
         "notes": notes,
         "effective_model": effective_model if provider in {"hosted", "live-hosted"} else None,
+        "hosted_adapter": hosted_adapter if provider in {"hosted", "live-hosted"} else None,
     }
     if provider == "heuristic":
         notes.append("Deterministic local heuristic path is available without additional configuration.")
@@ -63,6 +65,8 @@ def evaluate_config(provider: str, model: str | None = None) -> dict:
         api_key = os.environ.get("TRACE_HOSTED_API_KEY")
         base_url = os.environ.get("TRACE_HOSTED_BASE_URL")
         payload["hosted_base_url"] = base_url
+        if hosted_adapter not in {"openai-compatible", "anthropic-messages"}:
+            issues.append("TRACE_HOSTED_ADAPTER must be one of: anthropic-messages, openai-compatible.")
         if not api_key:
             issues.append("TRACE_HOSTED_API_KEY is not set.")
         if not base_url:
@@ -72,8 +76,11 @@ def evaluate_config(provider: str, model: str | None = None) -> dict:
             if parsed.scheme not in {"http", "https"} or not parsed.netloc:
                 issues.append("TRACE_HOSTED_BASE_URL must be a valid http(s) URL.")
             elif not parsed.path:
-                notes.append("TRACE_HOSTED_BASE_URL should target a chat-completions endpoint explicitly.")
-        notes.append("Hosted provider path expects an OpenAI-compatible chat-completions API contract.")
+                notes.append("TRACE_HOSTED_BASE_URL should target the adapter-specific API endpoint explicitly.")
+        if hosted_adapter == "openai-compatible":
+            notes.append("Hosted provider path expects an OpenAI-compatible chat-completions API contract.")
+        elif hosted_adapter == "anthropic-messages":
+            notes.append("Hosted provider path expects an Anthropic-compatible messages API contract.")
         notes.append(f"Effective hosted model: {effective_model}")
         payload["ready"] = not issues
         return payload
