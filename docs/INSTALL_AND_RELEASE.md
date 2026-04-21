@@ -71,6 +71,18 @@ This script:
 - builds the sdist and wheel
 - writes checksums for the build outputs
 
+## GitHub Actions
+
+TRACE now includes:
+
+- `.github/workflows/ci.yml`
+- `.github/workflows/release-build.yml`
+
+Current workflow split:
+
+- `CI` runs tests and a demo smoke test on push and pull request
+- `Release Build` builds wheel and sdist artifacts on tags and manual dispatch
+
 ## Demo helper
 
 TRACE also includes:

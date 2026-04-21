@@ -16,6 +16,7 @@ The project is being built as a serious forensic workflow candidate rather than 
 - First-run quickstart: `docs/FIRST_10_MINUTES.md`
 - Install and release notes: `docs/INSTALL_AND_RELEASE.md`
 - Packaging and demo: `docs/PACKAGING_AND_DEMO.md`
+- CI and release automation: `.github/workflows/`
 - Hosted provider setup: `docs/HOSTED_PROVIDER_SETUP.md`
 - Adapter registry: `docs/ADAPTER_REGISTRY.md`
 - Live-provider hardening: `docs/LIVE_PROVIDER_HARDENING.md`

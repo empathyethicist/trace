@@ -21,6 +21,8 @@ Prerequisite:
 
 - `python -m build` must be available in the active environment
 
+The same release-build path is mirrored in `.github/workflows/release-build.yml`.
+
 ## Release artifact contents
 
 The source distribution includes:
@@ -62,3 +64,5 @@ What it does:
 ## Operational note
 
 The demo script is intended for first-run evaluation, partner walkthroughs, and local smoke testing. It is not a substitute for the fuller validation and benchmark workflows documented elsewhere in the repo.
+
+The same smoke path is mirrored in `.github/workflows/ci.yml`.
