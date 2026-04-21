@@ -887,6 +887,22 @@ commonName = supplied
         self.assertEqual(config.runtime_metrics["provider_fetches"], 0)
         self.assertEqual(provenance["raw_provider_level"], 0)
 
+    def test_hosted_fast_path_skips_explicit_crisis_user_fetch(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model")
+        level, indicators, confidence, reasoning, provider, _, _, provenance = classify_user_with_provider(
+            "I want to kill myself.",
+            "Current vulnerability level: Acute crisis; behavioral trend: relational_transgression.",
+            [{"id": 1, "speaker": "user", "content": "I want to kill myself.", "timestamp": None}],
+            config,
+        )
+        self.assertEqual(level, 4)
+        self.assertIn("kill myself", " ".join(indicators))
+        self.assertEqual(provider, "heuristic-fast-path")
+        self.assertIn("fast-path", reasoning)
+        self.assertEqual(config.runtime_metrics["fast_path_skips"], 1)
+        self.assertEqual(config.runtime_metrics["provider_fetches"], 0)
+        self.assertEqual(provenance["raw_provider_level"], 4)
+
     def test_hosted_fast_path_skips_low_risk_system_fetch(self) -> None:
         config = LLMConfig(provider="hosted", model="hosted-model")
         category, subcategory, role, confidence, reasoning, provider, _, _ = classify_system_with_provider(

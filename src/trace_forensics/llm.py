@@ -856,9 +856,15 @@ def classify_user_with_provider(
             provenance,
         )
 
-    if config.provider == "hosted" and heuristic_level == 0 and heuristic_confidence >= 0.95:
+    if (
+        config.provider == "hosted"
+        and (
+            (heuristic_level == 0 and heuristic_confidence >= 0.95)
+            or (heuristic_level == 4 and heuristic_confidence >= 0.9 and len(heuristic_indicators) >= 1)
+        )
+    ):
         _add_runtime_metric(config, "fast_path_skips")
-        reasoning = "Hosted fast-path accepted high-confidence local heuristic for baseline user message."
+        reasoning = "Hosted fast-path accepted high-confidence local heuristic for user message."
         provenance = {
             "raw_provider_level": heuristic_level,
             "raw_provider_indicators": heuristic_indicators,
