@@ -603,34 +603,46 @@ def sign_manifest(
     effective_public_key_path = public_key_path
     if effective_public_key_path is None:
         effective_public_key_path = package_dir / "manifest_signer_public.pem"
-        subprocess.run(
-            [
-                "openssl",
-                "pkey",
-                "-in",
-                str(private_key_path),
-                "-pubout",
-                "-out",
-                str(effective_public_key_path),
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        try:
+            subprocess.run(
+                [
+                    "openssl",
+                    "pkey",
+                    "-in",
+                    str(private_key_path),
+                    "-pubout",
+                    "-out",
+                    str(effective_public_key_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as error:
+            detail = (error.stderr or error.stdout or "").strip()
+            if detail:
+                raise ValueError(f"Private key {private_key_path} is invalid or unreadable. {detail}") from error
+            raise ValueError(f"Private key {private_key_path} is invalid or unreadable.") from error
     build_trust_metadata(package_dir, effective_public_key_path, signer_label, certificate_chain_paths, signing_certificate_path)
     manifest_path = package_dir / "manifest.json"
     manifest = read_json(manifest_path)
     manifest["package_hash_sha256"] = hash_package_contents(package_dir)
     write_json(manifest_path, manifest)
-    subprocess.run(
-        [
-            "openssl", "dgst", "-sha256", "-sign", str(private_key_path),
-            "-out", str(signature_path), str(manifest_path),
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        subprocess.run(
+            [
+                "openssl", "dgst", "-sha256", "-sign", str(private_key_path),
+                "-out", str(signature_path), str(manifest_path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as error:
+        detail = (error.stderr or error.stdout or "").strip()
+        if detail:
+            raise ValueError(f"Could not sign manifest with private key {private_key_path}. {detail}") from error
+        raise ValueError(f"Could not sign manifest with private key {private_key_path}.") from error
     return signature_path
 
 

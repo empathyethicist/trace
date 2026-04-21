@@ -535,6 +535,19 @@ class TraceTests(unittest.TestCase):
             self.assertEqual(trust_metadata["public_key_path"], "manifest_signer_public.pem")
             self.assertTrue(verify_evidence_package(package)["all_pass"])
 
+    def test_sign_manifest_rejects_invalid_private_key_with_clear_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package = root / "package"
+            package.mkdir(parents=True, exist_ok=True)
+            write_json(package / "manifest.json", {"package_hash_sha256": "placeholder"})
+            bad_key = root / "bad-key.pem"
+            bad_key.write_text("not-a-key\n", encoding="utf-8")
+            with self.assertRaises(ValueError) as ctx:
+                sign_manifest(package, bad_key)
+            self.assertIn("is invalid or unreadable", str(ctx.exception))
+            self.assertIn(str(bad_key), str(ctx.exception))
+
     def test_verify_signature_rejects_malformed_trust_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
