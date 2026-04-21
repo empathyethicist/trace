@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from trace.classify import classify_case
 from trace.classify import calibrate_user_vulnerability_from_state
-from trace.cli import apply_runtime_provider_overrides, evaluate_config
+from trace.cli import apply_runtime_provider_overrides, evaluate_config, init_workspace
 from trace.ingest import (
     ingest_case,
     parse_axiom_json_records,
@@ -169,6 +169,24 @@ class TraceTests(unittest.TestCase):
             self.assertEqual(os.environ["TRACE_HOSTED_BASE_URL"], "https://provider.example/v1/messages")
             self.assertEqual(os.environ["TRACE_HOSTED_MODEL"], "override-model")
             self.assertEqual(os.environ["TRACE_HOSTED_ADAPTER"], "anthropic-messages")
+
+    def test_init_workspace_creates_expected_layout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "workspace"
+            result = init_workspace(root)
+            self.assertEqual(result["root"], str(root))
+            for relative in [
+                "cases",
+                "replay_artifacts",
+                "benchmark_artifacts",
+                "benchmark_history",
+                "validation_runs",
+                "evidence_exports",
+                "keys",
+            ]:
+                self.assertTrue((root / relative).is_dir())
+            self.assertTrue((root / "README.md").exists())
+            self.assertTrue((root / ".gitignore").exists())
 
     def test_hosted_adapter_payloads(self) -> None:
         openai_payload = _build_hosted_request_payload(

@@ -109,6 +109,75 @@ def add_hosted_override_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--hosted-adapter", choices=["openai-compatible", "anthropic-messages"])
 
 
+def init_workspace(root: Path) -> dict:
+    created: list[str] = []
+    for relative in [
+        "cases",
+        "replay_artifacts",
+        "benchmark_artifacts",
+        "benchmark_history",
+        "validation_runs",
+        "evidence_exports",
+        "keys",
+    ]:
+        path = root / relative
+        path.mkdir(parents=True, exist_ok=True)
+        created.append(str(path))
+
+    readme_path = root / "README.md"
+    if not readme_path.exists():
+        readme_path.write_text(
+            "\n".join(
+                [
+                    "# TRACE Workspace",
+                    "",
+                    "Recommended usage:",
+                    "",
+                    "- `cases/` — ingested case material",
+                    "- `replay_artifacts/` — hosted replay captures",
+                    "- `benchmark_artifacts/` — benchmark outputs",
+                    "- `benchmark_history/` — benchmark history snapshots",
+                    "- `validation_runs/` — local validation working directories",
+                    "- `evidence_exports/` — exported evidence packages",
+                    "- `keys/` — local signing materials",
+                    "",
+                    "Typical first steps:",
+                    "",
+                    "1. `trace config-check --provider heuristic`",
+                    "2. `trace config-check --provider hosted`",
+                    "3. `trace validate --reference ./validation/companion_incident.json --root ./validation_runs`",
+                    "",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        created.append(str(readme_path))
+
+    gitignore_path = root / ".gitignore"
+    if not gitignore_path.exists():
+        gitignore_path.write_text(
+            "\n".join(
+                [
+                    ".DS_Store",
+                    "__pycache__/",
+                    "*.pyc",
+                    ".env",
+                    "keys/*.pem",
+                    "keys/*.key",
+                    "keys/*.crt",
+                    "keys/*.csr",
+                    "keys/*.srl",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        created.append(str(gitignore_path))
+
+    return {"root": str(root), "created": created}
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="trace")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -119,6 +188,9 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--case-id", required=True)
     ingest.add_argument("--examiner", required=True)
     ingest.add_argument("--root", default=str(DEFAULT_ROOT))
+
+    init_cmd = sub.add_parser("init")
+    init_cmd.add_argument("--root", default=str(DEFAULT_ROOT))
 
     classify = sub.add_parser("classify")
     classify.add_argument("--case-id", required=True)
@@ -242,6 +314,13 @@ def main() -> None:
         print(f"[INGEST] Source hash (SHA-256): {result.source_hash}")
         print(f"[INGEST] Messages: {result.transcript_count}")
         print(f"[INGEST] Case {args.case_id} ready for classification")
+        return
+
+    if args.command == "init":
+        result = init_workspace(Path(args.root))
+        print(f"[INIT] Workspace root: {result['root']}")
+        for item in result["created"]:
+            print(f"[INIT] Created: {item}")
         return
 
     if args.command == "classify":

@@ -13,6 +13,8 @@ The project is being built as a serious forensic workflow candidate rather than 
 - Adoption posture: `docs/ADOPTION_READINESS.md`
 - Pilot plan: `docs/PILOT_EVALUATION.md`
 - Lab operations: `docs/LAB_DEPLOYMENT_NOTES.md`
+- First-run quickstart: `docs/FIRST_10_MINUTES.md`
+- Install and release notes: `docs/INSTALL_AND_RELEASE.md`
 - Hosted provider setup: `docs/HOSTED_PROVIDER_SETUP.md`
 - Adapter registry: `docs/ADAPTER_REGISTRY.md`
 - Live-provider hardening: `docs/LIVE_PROVIDER_HARDENING.md`
@@ -116,6 +118,7 @@ cd trace
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
+trace init --root ./trace-workspace
 ```
 
 ## Quick start
@@ -124,6 +127,7 @@ pip install -e .
 
 ```bash
 trace version
+trace init --root ./trace-workspace
 trace config-check --provider heuristic
 trace config-check --provider hosted
 ```
@@ -133,6 +137,7 @@ trace config-check --provider hosted
 ```bash
 trace validate --reference ./validation/companion_incident.json
 trace validate --reference ./validation/reference_long_case.json
+trace validate --reference ./validation/companion_incident.json --root ./trace-workspace/validation_runs
 trace benchmark --validation-dir ./validation
 trace benchmark --validation-dir ./validation --profile hosted --output-dir ./benchmark_artifacts
 trace benchmark --validation-dir ./validation --profile live-hosted --output-dir ./benchmark_artifacts_live
@@ -151,39 +156,48 @@ trace ingest \
   --input ./validation/companion_incident.json \
   --format json \
   --case-id DEMO-001 \
-  --examiner "Examiner-01"
+  --examiner "Examiner-01" \
+  --root ./trace-workspace
 
 trace classify \
   --case-id DEMO-001 \
   --provider heuristic \
-  --review-mode auto
+  --review-mode auto \
+  --root ./trace-workspace
 
 trace report \
   --case-id DEMO-001 \
   --examiner "Examiner-01" \
-  --output ./evidence
+  --output ./trace-workspace/evidence_exports \
+  --root ./trace-workspace
 ```
 
 ## CLI commands
 
+### Initialize workspace
+
+```bash
+trace init --root ./trace-workspace
+```
+
 ### Ingest
 
 ```bash
-trace ingest --input transcript.json --format json --case-id CASE-001 --examiner "Examiner-01"
-trace ingest --input court_transcript.txt --format court --case-id CASE-002 --examiner "Examiner-01"
-trace ingest --input axiom_messages.json --format axiom --case-id CASE-003 --examiner "Examiner-01"
-trace ingest --input ufed_messages.xml --format ufed --case-id CASE-004 --examiner "Examiner-01"
+trace ingest --input transcript.json --format json --case-id CASE-001 --examiner "Examiner-01" --root ./trace-workspace
+trace ingest --input court_transcript.txt --format court --case-id CASE-002 --examiner "Examiner-01" --root ./trace-workspace
+trace ingest --input axiom_messages.json --format axiom --case-id CASE-003 --examiner "Examiner-01" --root ./trace-workspace
+trace ingest --input ufed_messages.xml --format ufed --case-id CASE-004 --examiner "Examiner-01" --root ./trace-workspace
 ```
 
 ### Classify
 
 ```bash
-trace classify --case-id CASE-001 --provider heuristic
-trace classify --case-id CASE-001 --provider mock --model mock-model --window-size 4
-trace classify --case-id CASE-001 --provider hosted --model provider-default
-trace classify --case-id CASE-001 --provider hosted --model provider-default --replay-dir ./replay_artifacts --replay-mode record
-trace classify --case-id CASE-001 --provider hosted --model provider-default --replay-dir ./replay_artifacts --replay-mode replay-only
-trace classify --case-id CASE-001 --manual
+trace classify --case-id CASE-001 --provider heuristic --root ./trace-workspace
+trace classify --case-id CASE-001 --provider mock --model mock-model --window-size 4 --root ./trace-workspace
+trace classify --case-id CASE-001 --provider hosted --model provider-default --root ./trace-workspace
+trace classify --case-id CASE-001 --provider hosted --model provider-default --replay-dir ./trace-workspace/replay_artifacts --replay-mode record --root ./trace-workspace
+trace classify --case-id CASE-001 --provider hosted --model provider-default --replay-dir ./trace-workspace/replay_artifacts --replay-mode replay-only --root ./trace-workspace
+trace classify --case-id CASE-001 --manual --root ./trace-workspace
 ```
 
 ### Hosted-provider setup
@@ -211,14 +225,14 @@ trace config-check --provider hosted --hosted-adapter anthropic-messages --hoste
 ### Inter-rater reliability
 
 ```bash
-trace irr-import --case-id CASE-001 --coder-2-file ./coder2_classified_transcript.json
-trace irr-compute --case-id CASE-001
+trace irr-import --case-id CASE-001 --coder-2-file ./coder2_classified_transcript.json --root ./trace-workspace
+trace irr-compute --case-id CASE-001 --root ./trace-workspace
 ```
 
 ### Report export
 
 ```bash
-trace report --case-id CASE-001 --examiner "Examiner-01" --output ./evidence
+trace report --case-id CASE-001 --examiner "Examiner-01" --output ./trace-workspace/evidence_exports --root ./trace-workspace
 ```
 
 ### Package verification and signing
