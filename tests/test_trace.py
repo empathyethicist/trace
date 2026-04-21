@@ -370,6 +370,26 @@ class TraceTests(unittest.TestCase):
             self.assertEqual(records[0]["speaker"], "system")
             self.assertEqual(records[1]["speaker"], "user")
 
+    def test_parse_axiom_skips_unusable_records_in_mixed_arrays(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "axiom_mixed.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "messages": [
+                            {"author": {"role": "Assistant"}, "body": {"text": "hello"}, "created_at": "2026-01-01T00:00:00Z"},
+                            {"junk": "skip me"},
+                            {"sender": {"role": "Human"}, "message": {"text": "hi"}, "time": "2026-01-01T00:00:01Z"},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            records = parse_axiom_json_records(path)
+            self.assertEqual(len(records), 2)
+            self.assertEqual(records[0]["speaker"], "system")
+            self.assertEqual(records[1]["speaker"], "user")
+
     def test_parse_ufed_nested_body_extracts_text(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "ufed_nested.xml"

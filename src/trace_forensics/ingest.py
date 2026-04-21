@@ -211,6 +211,8 @@ def parse_axiom_json_records(path: Path) -> list[dict]:
             or ""
         )
         timestamp = item.get("timestamp") or item.get("time") or item.get("created_at")
+        if not content or not speaker:
+            continue
         rows.append(
             {
                 "id": len(rows) + 1,
