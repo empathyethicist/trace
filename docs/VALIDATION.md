@@ -121,7 +121,7 @@ trace validate --reference ./validation/reference_long_case.json
 trace validate --reference ./validation/reference_mixed_case.json
 trace validate --reference ./validation/reference_noisy_case.json
 trace benchmark --validation-dir ./validation
-trace benchmark --validation-dir ./validation --profile hosted --output-dir ./benchmark_artifacts
+trace benchmark --validation-dir ./validation --profile mock-hosted --output-dir ./benchmark_artifacts
 trace benchmark --validation-dir ./validation --profile live-hosted --output-dir ./benchmark_artifacts_live
 trace benchmark-trend --history-dir ./benchmark_history --prefix benchmark_heuristic_latest
 ```
@@ -149,7 +149,7 @@ The benchmark workflow can also emit history snapshots such as:
 
 - `benchmark_heuristic_latest.json`
 - `benchmark_hosted_latest.json`
-- `benchmark_compare_heuristic_vs_hosted_latest.json`
+- `benchmark_compare_heuristic_vs_mock-hosted_latest.json`
 - `benchmark_heuristic_latest_<timestamp>.json`
 - `benchmark_hosted_latest_<timestamp>.json`
 
@@ -159,8 +159,8 @@ TRACE can also emit trend summaries derived from the dated history snapshots:
 
 - `benchmark_heuristic_latest_trend_summary.json`
 - `benchmark_heuristic_latest_trend_summary.md`
-- `benchmark_compare_heuristic_vs_hosted_latest_trend_summary.json`
-- `benchmark_compare_heuristic_vs_hosted_latest_trend_summary.md`
+- `benchmark_compare_heuristic_vs_mock-hosted_latest_trend_summary.json`
+- `benchmark_compare_heuristic_vs_mock-hosted_latest_trend_summary.md`
 
 These summarize pass-rate, failure-count, timing, or drift movement across the retained snapshot series.
 

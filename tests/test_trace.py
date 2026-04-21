@@ -31,6 +31,7 @@ from trace_forensics.validation import (
     benchmark_profile_settings,
     build_history_trend_summary,
     compare_benchmark_summaries,
+    normalize_benchmark_profile,
     run_benchmark_suite,
     run_validation,
     sign_artifact_bundle,
@@ -602,8 +603,8 @@ commonName = supplied
             self.assertEqual(summary["failed_fixtures"], 0)
             self.assertEqual(summary["pass_rate"], 100.0)
             self.assertGreater(summary["total_elapsed_seconds"], 0.0)
-            hosted = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", Path(tmp) / "hosted", profile="hosted")
-            self.assertEqual(hosted["profile"], "hosted")
+            hosted = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", Path(tmp) / "hosted", profile="mock-hosted")
+            self.assertEqual(hosted["profile"], "mock-hosted")
             self.assertEqual(hosted["failed_fixtures"], 0)
 
     def test_benchmark_suite_replay_only_uses_recorded_outputs(self) -> None:
@@ -613,14 +614,14 @@ commonName = supplied
             recorded = run_benchmark_suite(
                 validation_dir,
                 root / "recorded",
-                profile="hosted",
+                profile="mock-hosted",
                 replay_dir=root / "replay",
                 replay_mode="record",
             )
             replayed = run_benchmark_suite(
                 validation_dir,
                 root / "replayed",
-                profile="hosted",
+                profile="mock-hosted",
                 replay_dir=root / "replay",
                 replay_mode="replay-only",
             )
@@ -651,9 +652,14 @@ commonName = supplied
         self.assertEqual(settings["window_size"], 8)
 
     def test_hosted_benchmark_profile_settings_include_adapter(self) -> None:
-        settings = benchmark_profile_settings("hosted")
+        settings = benchmark_profile_settings("mock-hosted")
         self.assertEqual(settings["provider"], "mock")
         self.assertEqual(settings["adapter"], "mock")
+
+    def test_hosted_profile_alias_normalizes_to_mock_hosted(self) -> None:
+        self.assertEqual(normalize_benchmark_profile("hosted"), "mock-hosted")
+        settings = benchmark_profile_settings("hosted")
+        self.assertEqual(settings["provider"], "mock")
 
     def test_benchmark_artifact_export(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -717,7 +723,7 @@ commonName = supplied
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             baseline = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "heuristic", profile="heuristic")
-            candidate = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "hosted", profile="hosted")
+            candidate = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "hosted", profile="mock-hosted")
             comparison = apply_comparison_assessments(compare_benchmark_summaries(baseline, candidate))
             self.assertTrue(comparison["drift_free"])
             self.assertEqual(comparison["candidate_profile_settings"]["adapter"], "mock")
@@ -728,13 +734,13 @@ commonName = supplied
             self.assertIn("# TRACE Benchmark Comparison", markdown)
 
     def test_comparison_history_trend_summary(self) -> None:
-        prefix = "benchmark_compare_heuristic_vs_hosted_latest"
+        prefix = "benchmark_compare_heuristic_vs_mock-hosted_latest"
         snapshots = [
             {
                 "generated_at": "2026-04-19T10:00:00+00:00",
                 "payload": {
                     "baseline_profile": "heuristic",
-                    "candidate_profile": "hosted",
+                    "candidate_profile": "mock-hosted",
                     "drift_count": 0,
                     "drift_free": True,
                     "provider_drift_policy": {"status": "pass"},
@@ -744,7 +750,7 @@ commonName = supplied
                 "generated_at": "2026-04-19T12:00:00+00:00",
                 "payload": {
                     "baseline_profile": "heuristic",
-                    "candidate_profile": "hosted",
+                    "candidate_profile": "mock-hosted",
                     "drift_count": 1,
                     "drift_free": False,
                     "provider_drift_policy": {"status": "warn"},

@@ -89,7 +89,7 @@ Recommended checks:
 ```bash
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 trace benchmark --validation-dir ./validation
-trace benchmark --validation-dir ./validation --profile hosted
+trace benchmark --validation-dir ./validation --profile mock-hosted
 ```
 
 If live-provider evaluation is desired:

@@ -73,10 +73,17 @@ REFERENCE_METADATA_DEFAULTS = {
 }
 
 
+def normalize_benchmark_profile(profile: str) -> str:
+    if profile == "hosted":
+        return "mock-hosted"
+    return profile
+
+
 def benchmark_profile_settings(profile: str) -> dict:
+    profile = normalize_benchmark_profile(profile)
     if profile == "heuristic":
         return {}
-    if profile == "hosted":
+    if profile == "mock-hosted":
         return {"provider": "mock", "model": "benchmark-mock-model", "adapter": "mock", "window_size": 8}
     if profile == "live-hosted":
         api_key = os.environ.get("TRACE_HOSTED_API_KEY")
@@ -98,6 +105,7 @@ def run_validation(
     replay_dir: Path | None = None,
     replay_mode: str = "off",
 ) -> ValidationResult:
+    profile = normalize_benchmark_profile(profile)
     start = perf_counter()
     reference = read_json(reference_path)
     case_id = reference["case_id"]
@@ -715,6 +723,7 @@ def run_benchmark_suite(
     replay_dir: Path | None = None,
     replay_mode: str = "off",
 ) -> dict:
+    profile = normalize_benchmark_profile(profile)
     settings = benchmark_profile_settings(profile)
     fixtures = discover_reference_fixtures(validation_dir)
     results = []

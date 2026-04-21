@@ -22,6 +22,7 @@ from trace_forensics.validation import (
     build_history_trend_summary,
     compare_benchmark_summaries,
     collect_history_snapshots,
+    normalize_benchmark_profile,
     run_benchmark_suite,
     run_validation,
     sign_artifact_bundle,
@@ -236,7 +237,7 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark = sub.add_parser("benchmark")
     benchmark.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
     benchmark.add_argument("--root", default=str(DEFAULT_ROOT))
-    benchmark.add_argument("--profile", default="heuristic", choices=["heuristic", "hosted", "live-hosted"])
+    benchmark.add_argument("--profile", default="heuristic", choices=["heuristic", "mock-hosted", "hosted", "live-hosted"])
     benchmark.add_argument("--output-dir")
     benchmark.add_argument("--history-dir")
     benchmark.add_argument("--sign-private-key")
@@ -251,8 +252,8 @@ def build_parser() -> argparse.ArgumentParser:
     compare = sub.add_parser("benchmark-compare")
     compare.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
     compare.add_argument("--root", default=str(DEFAULT_ROOT))
-    compare.add_argument("--baseline-profile", default="heuristic", choices=["heuristic", "hosted", "live-hosted"])
-    compare.add_argument("--candidate-profile", default="hosted", choices=["heuristic", "hosted", "live-hosted"])
+    compare.add_argument("--baseline-profile", default="heuristic", choices=["heuristic", "mock-hosted", "hosted", "live-hosted"])
+    compare.add_argument("--candidate-profile", default="mock-hosted", choices=["heuristic", "mock-hosted", "hosted", "live-hosted"])
     compare.add_argument("--output-dir")
     compare.add_argument("--history-dir")
     compare.add_argument("--sign-private-key")
@@ -267,7 +268,7 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_replay = sub.add_parser("benchmark-replay")
     benchmark_replay.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
     benchmark_replay.add_argument("--root", default=str(DEFAULT_ROOT))
-    benchmark_replay.add_argument("--profile", default="live-hosted", choices=["hosted", "live-hosted"])
+    benchmark_replay.add_argument("--profile", default="live-hosted", choices=["mock-hosted", "hosted", "live-hosted"])
     benchmark_replay.add_argument("--replay-dir", required=True)
     benchmark_replay.add_argument("--output-dir")
     benchmark_replay.add_argument("--history-dir")
@@ -395,11 +396,12 @@ def main() -> None:
 
     if args.command == "benchmark":
         apply_runtime_provider_overrides(args)
-        benchmark_profile_settings(args.profile)
+        profile = normalize_benchmark_profile(args.profile)
+        benchmark_profile_settings(profile)
         summary = run_benchmark_suite(
             Path(args.validation_dir),
             Path(args.root),
-            profile=args.profile,
+            profile=profile,
             replay_dir=Path(args.replay_dir) if args.replay_dir else None,
             replay_mode=args.replay_mode,
         )
@@ -439,24 +441,25 @@ def main() -> None:
                 print(f"[BENCHMARK] Artifact trust: {signed['trust']}")
                 print(f"[BENCHMARK] Artifact verification pass: {verified['all_pass']}")
         if args.history_dir:
-            snapshot = write_artifact_history_snapshot(summary, Path(args.history_dir), f"benchmark_{args.profile}_latest")
+            snapshot = write_artifact_history_snapshot(summary, Path(args.history_dir), f"benchmark_{profile}_latest")
             print(f"[BENCHMARK] History snapshot latest: {snapshot['latest']}")
             print(f"[BENCHMARK] History snapshot dated: {snapshot['dated']}")
-            history = write_history_summary(Path(args.history_dir), f"benchmark_{args.profile}_latest")
+            history = write_history_summary(Path(args.history_dir), f"benchmark_{profile}_latest")
             print(f"[BENCHMARK] History summary JSON: {history['json']}")
             print(f"[BENCHMARK] History summary Markdown: {history['markdown']}")
-            trend = write_history_trend_summary(Path(args.history_dir), f"benchmark_{args.profile}_latest")
+            trend = write_history_trend_summary(Path(args.history_dir), f"benchmark_{profile}_latest")
             print(f"[BENCHMARK] Trend summary JSON: {trend['json']}")
             print(f"[BENCHMARK] Trend summary Markdown: {trend['markdown']}")
         return
 
     if args.command == "benchmark-replay":
         apply_runtime_provider_overrides(args)
-        benchmark_profile_settings(args.profile)
+        profile = normalize_benchmark_profile(args.profile)
+        benchmark_profile_settings(profile)
         summary = run_benchmark_suite(
             Path(args.validation_dir),
             Path(args.root),
-            profile=args.profile,
+            profile=profile,
             replay_dir=Path(args.replay_dir),
             replay_mode="replay-only",
         )
@@ -493,31 +496,33 @@ def main() -> None:
                 print(f"[BENCHMARK-REPLAY] Artifact trust: {signed['trust']}")
                 print(f"[BENCHMARK-REPLAY] Artifact verification pass: {verified['all_pass']}")
         if args.history_dir:
-            snapshot = write_artifact_history_snapshot(summary, Path(args.history_dir), f"benchmark_{args.profile}_replay_latest")
+            snapshot = write_artifact_history_snapshot(summary, Path(args.history_dir), f"benchmark_{profile}_replay_latest")
             print(f"[BENCHMARK-REPLAY] History snapshot latest: {snapshot['latest']}")
             print(f"[BENCHMARK-REPLAY] History snapshot dated: {snapshot['dated']}")
-            history = write_history_summary(Path(args.history_dir), f"benchmark_{args.profile}_replay_latest")
-            trend = write_history_trend_summary(Path(args.history_dir), f"benchmark_{args.profile}_replay_latest")
+            history = write_history_summary(Path(args.history_dir), f"benchmark_{profile}_replay_latest")
+            trend = write_history_trend_summary(Path(args.history_dir), f"benchmark_{profile}_replay_latest")
             print(f"[BENCHMARK-REPLAY] History summary JSON: {history['json']}")
             print(f"[BENCHMARK-REPLAY] Trend summary JSON: {trend['json']}")
         return
 
     if args.command == "benchmark-compare":
         apply_runtime_provider_overrides(args)
-        benchmark_profile_settings(args.baseline_profile)
-        benchmark_profile_settings(args.candidate_profile)
+        baseline_profile = normalize_benchmark_profile(args.baseline_profile)
+        candidate_profile = normalize_benchmark_profile(args.candidate_profile)
+        benchmark_profile_settings(baseline_profile)
+        benchmark_profile_settings(candidate_profile)
         baseline = run_benchmark_suite(
             Path(args.validation_dir),
-            Path(args.root) / args.baseline_profile,
-            profile=args.baseline_profile,
-            replay_dir=(Path(args.replay_dir) / args.baseline_profile) if args.replay_dir else None,
+            Path(args.root) / baseline_profile,
+            profile=baseline_profile,
+            replay_dir=(Path(args.replay_dir) / baseline_profile) if args.replay_dir else None,
             replay_mode=args.replay_mode,
         )
         candidate = run_benchmark_suite(
             Path(args.validation_dir),
-            Path(args.root) / args.candidate_profile,
-            profile=args.candidate_profile,
-            replay_dir=(Path(args.replay_dir) / args.candidate_profile) if args.replay_dir else None,
+            Path(args.root) / candidate_profile,
+            profile=candidate_profile,
+            replay_dir=(Path(args.replay_dir) / candidate_profile) if args.replay_dir else None,
             replay_mode=args.replay_mode,
         )
         comparison = apply_comparison_assessments(compare_benchmark_summaries(baseline, candidate))
@@ -562,19 +567,19 @@ def main() -> None:
             snapshot = write_artifact_history_snapshot(
                 comparison,
                 Path(args.history_dir),
-                f"benchmark_compare_{args.baseline_profile}_vs_{args.candidate_profile}_latest",
+                f"benchmark_compare_{baseline_profile}_vs_{candidate_profile}_latest",
             )
             print(f"[BENCHMARK-COMPARE] History snapshot latest: {snapshot['latest']}")
             print(f"[BENCHMARK-COMPARE] History snapshot dated: {snapshot['dated']}")
             history = write_history_summary(
                 Path(args.history_dir),
-                f"benchmark_compare_{args.baseline_profile}_vs_{args.candidate_profile}_latest",
+                f"benchmark_compare_{baseline_profile}_vs_{candidate_profile}_latest",
             )
             print(f"[BENCHMARK-COMPARE] History summary JSON: {history['json']}")
             print(f"[BENCHMARK-COMPARE] History summary Markdown: {history['markdown']}")
             trend = write_history_trend_summary(
                 Path(args.history_dir),
-                f"benchmark_compare_{args.baseline_profile}_vs_{args.candidate_profile}_latest",
+                f"benchmark_compare_{baseline_profile}_vs_{candidate_profile}_latest",
             )
             print(f"[BENCHMARK-COMPARE] Trend summary JSON: {trend['json']}")
             print(f"[BENCHMARK-COMPARE] Trend summary Markdown: {trend['markdown']}")

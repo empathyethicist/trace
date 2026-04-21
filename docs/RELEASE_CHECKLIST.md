@@ -6,9 +6,9 @@ This checklist defines the minimum release gate for a public TRACE revision inte
 
 - Run the full unit and regression suite.
 - Run `trace benchmark --validation-dir ./validation --profile heuristic`.
-- Run `trace benchmark --validation-dir ./validation --profile hosted`.
+- Run `trace benchmark --validation-dir ./validation --profile mock-hosted`.
 - Run `trace benchmark --validation-dir ./validation --profile live-hosted` when release credentials are available and provider-drift evidence is desired.
-- Run `trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile hosted`.
+- Run `trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile mock-hosted`.
 - Run `trace benchmark-compare --validation-dir ./validation --baseline-profile heuristic --candidate-profile live-hosted` when a live-provider run is included in release evidence.
 - Confirm:
   - `failed_fixtures == 0`
@@ -49,7 +49,7 @@ This checklist defines the minimum release gate for a public TRACE revision inte
 
 ## Hosted-profile note
 
-The current hosted benchmark profile remains a mock-hosted workflow used for comparison plumbing and benchmark discipline. It is not yet a live-provider benchmark release gate.
+The current `mock-hosted` benchmark profile remains a simulated hosted workflow used for comparison plumbing and benchmark discipline. It is not a live-provider benchmark release gate.
 
 ## Live-hosted profile note
 

@@ -53,7 +53,7 @@ TRACE already provides:
 
 - automated regression tests
 - benchmark fixtures across benign, mixed, noisy, crisis, and long-form distress cases
-- heuristic, hosted, and live-hosted benchmark profiles
+- heuristic, mock-hosted, and live-hosted benchmark profiles
 - signed benchmark artifacts
 - benchmark history and trend summaries
 - explicit benchmark governance and provider-drift policy

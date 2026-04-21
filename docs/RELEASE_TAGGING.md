@@ -53,7 +53,7 @@ release-artifacts/
   v0.2.0/
     benchmark_heuristic/
     benchmark_hosted/
-    benchmark_compare_heuristic_vs_hosted/
+    benchmark_compare_heuristic_vs_mock-hosted/
     benchmark_history/
     release_notes.md
 ```

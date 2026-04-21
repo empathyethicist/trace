@@ -24,7 +24,7 @@ TRACE currently maintains three benchmark profiles:
 
 The `heuristic` profile is the baseline release profile because it is deterministic and locally reproducible.
 
-The current `hosted` profile is a controlled mock-hosted benchmark path. It is useful for workflow comparison, timing instrumentation, and drift plumbing, but it is **not yet** a substitute for benchmarking against live provider responses.
+The current `mock-hosted` profile is a controlled mock-hosted benchmark path. It is useful for workflow comparison, timing instrumentation, and drift plumbing, but it is **not** a substitute for benchmarking against live provider responses. TRACE still accepts `hosted` as a backward-compatible alias, but the preferred profile name is `mock-hosted`.
 
 The `live-hosted` profile is the external-provider benchmark path. It is intended for pre-release validation against a real hosted model and requires `TRACE_HOSTED_API_KEY` and `TRACE_HOSTED_BASE_URL`. Unless overridden, TRACE uses `provider-default` with the adapter selected by `TRACE_HOSTED_ADAPTER`. Releases should record the exact hosted adapter and hosted model identifier used for any live-provider benchmark artifact set.
 
@@ -83,7 +83,7 @@ Recommended review flow:
 
 This governance process still has three important limitations:
 
-- the `hosted` profile remains a mock-hosted path rather than a live provider benchmark
+- the `mock-hosted` profile remains a simulated hosted path rather than a live provider benchmark
 - benchmark history writes both latest-snapshot and dated-snapshot artifacts, but release policy does not yet enforce retention duration
 - timing thresholds are recorded but not yet enforced by policy
 
