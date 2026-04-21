@@ -935,6 +935,22 @@ commonName = supplied
         self.assertEqual(config.runtime_metrics["provider_fetches"], 0)
         self.assertEqual(provenance["raw_provider_level"], 2)
 
+    def test_hosted_fast_path_skips_upset_only_user_fetch(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model", api_key="token")
+        level, indicators, confidence, reasoning, provider, _, _, provenance = classify_user_with_provider(
+            "I barely slept and I feel upset about everything.",
+            "Current vulnerability level: Moderate distress; behavioral trend: no_harmful_behavior.",
+            [{"id": 1, "speaker": "user", "content": "I barely slept and I feel upset about everything.", "timestamp": None}],
+            config,
+        )
+        self.assertEqual(level, 2)
+        self.assertEqual(set(indicators), {"upset"})
+        self.assertEqual(provider, "heuristic-fast-path")
+        self.assertIn("fast-path", reasoning)
+        self.assertEqual(config.runtime_metrics["fast_path_skips"], 1)
+        self.assertEqual(config.runtime_metrics["provider_fetches"], 0)
+        self.assertEqual(provenance["raw_provider_level"], 2)
+
     def test_hosted_fast_path_does_not_skip_ambiguous_severe_user_fetch(self) -> None:
         config = LLMConfig(provider="hosted", model="hosted-model")
         with patch.dict(
