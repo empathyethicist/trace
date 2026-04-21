@@ -32,6 +32,7 @@ class LLMConfig:
 
 
 SUPPORTED_HOSTED_ADAPTERS = {"openai-compatible", "anthropic-messages"}
+_REPLAY_INDEX_CACHE: dict[tuple[str, int, int], dict[str, dict]] = {}
 
 
 def _json_request(url: str, payload: dict) -> dict:
@@ -84,11 +85,17 @@ def _replay_log_path(config: LLMConfig) -> Path | None:
     return config.replay_dir / "provider_replay.jsonl"
 
 
-def _read_replay_response(config: LLMConfig, key: str) -> dict | None:
-    path = _replay_log_path(config)
-    if not path or not path.exists():
-        return None
-    latest_match = None
+def _replay_log_cache_key(path: Path) -> tuple[str, int, int]:
+    stat = path.stat()
+    return (str(path.resolve()), stat.st_mtime_ns, stat.st_size)
+
+
+def _load_replay_index(path: Path) -> dict[str, dict]:
+    cache_key = _replay_log_cache_key(path)
+    cached = _REPLAY_INDEX_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    replay_index: dict[str, dict] = {}
     for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         if not line.strip():
             continue
@@ -96,9 +103,18 @@ def _read_replay_response(config: LLMConfig, key: str) -> dict | None:
             record = json.loads(line)
         except json.JSONDecodeError as error:
             raise ValueError(f"Replay log {path} contains malformed JSON on line {line_number}.") from error
-        if record.get("key") == key and record.get("raw_response") is not None:
-            latest_match = record["raw_response"]
-    return latest_match
+        if record.get("key") and record.get("raw_response") is not None:
+            replay_index[record["key"]] = record["raw_response"]
+    _REPLAY_INDEX_CACHE.clear()
+    _REPLAY_INDEX_CACHE[cache_key] = replay_index
+    return replay_index
+
+
+def _read_replay_response(config: LLMConfig, key: str) -> dict | None:
+    path = _replay_log_path(config)
+    if not path or not path.exists():
+        return None
+    return _load_replay_index(path).get(key)
 
 
 def _record_replay_response(

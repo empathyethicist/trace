@@ -23,7 +23,7 @@ from trace_forensics.ingest import (
     parse_ufed_xml_records,
 )
 from trace_forensics.irr import cohen_kappa, compute_irr, import_second_coder, krippendorff_alpha_nominal, krippendorff_alpha_ordinal
-from trace_forensics.llm import _calibrate_user_vulnerability
+from trace_forensics.llm import LLMConfig, _calibrate_user_vulnerability, _read_replay_response
 from trace_forensics.llm import _build_hosted_headers, _build_hosted_request_payload, _extract_hosted_text
 from trace_forensics.report import compute_calibration_summary, compute_findings, export_case_report, verify_evidence_package
 from trace_forensics.report import sign_manifest, verify_manifest_signature, verify_signing_certificate
@@ -787,6 +787,27 @@ commonName = supplied
             classified = read_json(root / "cases" / "CASE-REPLAY-DUP-2" / "classified_transcript.json")
             first_user = next(message for message in classified["transcript"] if message["speaker"] == "user")
             self.assertIn("latest duplicate record", first_user["classification"]["reasoning"])
+
+    def test_replay_index_is_cached_for_repeated_reads(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            replay_dir = Path(tmp)
+            replay_log = replay_dir / "provider_replay.jsonl"
+            replay_log.write_text(
+                json.dumps({"key": "abc", "raw_response": {"value": 1}}) + "\n",
+                encoding="utf-8",
+            )
+            config = LLMConfig(replay_dir=replay_dir)
+            read_calls = {"count": 0}
+            original_read_text = Path.read_text
+
+            def counted_read_text(path_obj, *args, **kwargs):
+                read_calls["count"] += 1
+                return original_read_text(path_obj, *args, **kwargs)
+
+            with patch("trace_forensics.llm.Path.read_text", new=counted_read_text):
+                self.assertEqual(_read_replay_response(config, "abc"), {"value": 1})
+                self.assertEqual(_read_replay_response(config, "abc"), {"value": 1})
+            self.assertEqual(read_calls["count"], 1)
 
     def test_user_vulnerability_calibration_raises_crisis_underclassification(self) -> None:
         level, indicators, confidence, reasoning, provenance = _calibrate_user_vulnerability(
