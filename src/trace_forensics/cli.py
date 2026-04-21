@@ -4,6 +4,7 @@ import argparse
 import os
 import subprocess
 from pathlib import Path
+from time import perf_counter
 from urllib.parse import urlparse
 
 from trace_forensics import __version__
@@ -334,6 +335,7 @@ def main() -> None:
             model = args.hosted_model or os.environ.get("TRACE_HOSTED_MODEL") or model
             if model == "trace-heuristic-v1":
                 model = "provider-default"
+        started_at = perf_counter()
         result = classify_case(
             Path(args.root) / "cases" / args.case_id,
             args.examiner,
@@ -348,6 +350,9 @@ def main() -> None:
         )
         print(f"[CLASSIFY] Classified {result.message_count} messages")
         print(f"[CLASSIFY] Output: {result.classified_path}")
+        print(f"[CLASSIFY] Total time: {round(perf_counter() - started_at, 4)}s")
+        for key, value in result.timings.items():
+            print(f"[CLASSIFY] {key}: {value}s")
         return
 
     if args.command == "irr-import":
@@ -368,8 +373,10 @@ def main() -> None:
         case_dir = Path(args.root) / "cases" / args.case_id
         if not case_dir.exists():
             raise FileNotFoundError(f"Case {args.case_id} does not exist under {case_dir.parent}. Ingest the case before report export.")
+        started_at = perf_counter()
         package = export_case_report(case_dir, Path(args.output), args.examiner, examiner_notes)
         print(f"[REPORT] Evidence package exported to {package}")
+        print(f"[REPORT] Total time: {round(perf_counter() - started_at, 4)}s")
         return
 
     if args.command == "validate":

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import os
 import sys
 from pathlib import Path
+from time import perf_counter
 
 from trace_forensics.llm import LLMConfig, classify_system_with_provider, classify_user_with_provider
 from trace_forensics.heuristics import (
@@ -21,6 +22,7 @@ from trace_forensics.storage import append_jsonl, read_json, utc_now_iso, write_
 class ClassificationResult:
     classified_path: Path
     message_count: int
+    timings: dict[str, float]
 
 
 def calibrate_user_vulnerability_from_state(
@@ -175,7 +177,9 @@ def classify_case(
     replay_dir: Path | None = None,
     replay_mode: str = "off",
 ) -> ClassificationResult:
+    classify_started_at = perf_counter()
     source = read_json(case_dir / "source_transcript.json")
+    source_loaded_at = perf_counter()
     transcript = source["transcript"]
     classified: list[dict] = []
     current_user_vulnerability = 0
@@ -187,8 +191,11 @@ def classify_case(
     config.cache_dir = case_dir / ".llm_cache"
     config.replay_dir = replay_dir
     config.replay_mode = replay_mode
+    message_processing_seconds = 0.0
+    audit_log_seconds = 0.0
 
     for index, message in enumerate(transcript):
+        message_started_at = perf_counter()
         record = dict(message)
         state_summary = build_state_summary(classified, window_size=window_size) if classified else "Current vulnerability level: Baseline; behavioral trend: no_harmful_behavior."
         window_messages = build_window(transcript, index, window_size)
@@ -278,6 +285,8 @@ def classify_case(
         model_history.append(actual_model)
         adapter_history.append(actual_adapter)
         classified.append(record)
+        message_processing_seconds += perf_counter() - message_started_at
+        audit_started_at = perf_counter()
         append_jsonl(
             case_dir / "audit_log.jsonl",
             {
@@ -296,6 +305,7 @@ def classify_case(
                 "adapter": actual_adapter,
             },
         )
+        audit_log_seconds += perf_counter() - audit_started_at
 
     provider_counts = Counter(provider_history)
     model_counts = Counter(model_history)
@@ -332,5 +342,16 @@ def classify_case(
         "transcript": classified,
     }
     classified_path = case_dir / "classified_transcript.json"
+    output["performance_summary"] = {
+        "source_load_seconds": round(source_loaded_at - classify_started_at, 4),
+        "message_processing_seconds": round(message_processing_seconds, 4),
+        "audit_log_seconds": round(audit_log_seconds, 4),
+        "write_output_seconds": 0.0,
+        "total_seconds": 0.0,
+    }
+    write_started_at = perf_counter()
     write_json(classified_path, output)
-    return ClassificationResult(classified_path, len(classified))
+    output["performance_summary"]["write_output_seconds"] = round(perf_counter() - write_started_at, 4)
+    output["performance_summary"]["total_seconds"] = round(perf_counter() - classify_started_at, 4)
+    write_json(classified_path, output)
+    return ClassificationResult(classified_path, len(classified), output["performance_summary"])

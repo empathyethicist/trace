@@ -469,6 +469,7 @@ class TraceTests(unittest.TestCase):
             self.assertEqual(result.transcript_count, 8)
             classified = classify_case(root / "cases" / "CASE-1", "tester")
             self.assertEqual(classified.message_count, 8)
+            self.assertIn("total_seconds", classified.timings)
             findings = compute_findings(read_json(root / "cases" / "CASE-1" / "classified_transcript.json")["transcript"])
             self.assertGreaterEqual(findings["inappropriate_response_rate"], 75)
             package = export_case_report(root / "cases" / "CASE-1", root / "out", "tester")
@@ -492,6 +493,9 @@ class TraceTests(unittest.TestCase):
             self.assertIn("calibration_summary", report)
             self.assertIn("calibration_summary", manifest)
             self.assertEqual(model_config["adapter"], "heuristic")
+            classified_payload = read_json(root / "cases" / "CASE-1" / "classified_transcript.json")
+            self.assertIn("performance_summary", classified_payload)
+            self.assertIn("message_processing_seconds", classified_payload["performance_summary"])
 
     def test_manifest_sign_and_verify(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
