@@ -363,9 +363,11 @@ class TraceTests(unittest.TestCase):
             trust_metadata = read_json(package / "trust_metadata.json")
             self.assertEqual(trust_metadata["signer_label"], "TRACE test signer")
             self.assertEqual(trust_metadata["public_key_path"], "trace_test_signer_public.pem")
+            self.assertTrue((package / "trace_test_signer_public.pem").exists())
             self.assertEqual(len(trust_metadata["certificate_chain"]), 1)
             self.assertEqual(trust_metadata["certificate_chain"][0]["path"], "trace_chain.pem")
             self.assertEqual(trust_metadata["signing_certificate_path"], "trace_test_signer_cert.pem")
+            self.assertTrue(verify_evidence_package(package)["all_pass"])
 
     def test_revoked_certificate_fails_verification(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -561,6 +563,24 @@ commonName = supplied
                     replay_mode="replay-only",
                 )
             self.assertIn("Replay-only mode could not find recorded response", str(ctx.exception))
+
+    def test_malformed_replay_log_raises_clear_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            replay_dir = root / "replay"
+            replay_dir.mkdir(parents=True, exist_ok=True)
+            (replay_dir / "provider_replay.jsonl").write_text("not-json\n", encoding="utf-8")
+            ingest_case(FIXTURE, "CASE-BAD-REPLAY", "tester", "json", root / "cases")
+            with self.assertRaises(ValueError) as ctx:
+                classify_case(
+                    root / "cases" / "CASE-BAD-REPLAY",
+                    "tester",
+                    provider="mock",
+                    model="mock-model",
+                    replay_dir=replay_dir,
+                    replay_mode="replay-only",
+                )
+            self.assertIn("contains malformed JSON on line 1", str(ctx.exception))
 
     def test_user_vulnerability_calibration_raises_crisis_underclassification(self) -> None:
         level, indicators, confidence, reasoning, provenance = _calibrate_user_vulnerability(

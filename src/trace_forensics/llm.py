@@ -88,10 +88,13 @@ def _read_replay_response(config: LLMConfig, key: str) -> dict | None:
     path = _replay_log_path(config)
     if not path or not path.exists():
         return None
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         if not line.strip():
             continue
-        record = json.loads(line)
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"Replay log {path} contains malformed JSON on line {line_number}.") from error
         if record.get("key") == key and record.get("raw_response") is not None:
             return record["raw_response"]
     return None

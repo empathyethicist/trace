@@ -539,20 +539,26 @@ def build_trust_metadata(
     certificate_chain_paths: list[Path] | None = None,
     signing_certificate_path: Path | None = None,
 ) -> dict:
+    copied_public_key_path = None
+    if public_key_path and public_key_path.exists():
+        copied_public_key_path = package_dir / public_key_path.name
+        if public_key_path.resolve() != copied_public_key_path.resolve():
+            copied_public_key_path.write_bytes(public_key_path.read_bytes())
+    copied_signing_certificate_path = None
+    if signing_certificate_path and signing_certificate_path.exists():
+        copied_signing_certificate_path = package_dir / signing_certificate_path.name
+        if signing_certificate_path.resolve() != copied_signing_certificate_path.resolve():
+            copied_signing_certificate_path.write_bytes(signing_certificate_path.read_bytes())
     metadata = {
         "signature_algorithm": "RSA-SHA256",
         "signer_label": signer_label or "unspecified",
         "manifest_path": "manifest.json",
         "signature_path": "manifest.sig",
-        "public_key_path": public_key_path.name if public_key_path else None,
-        "public_key_sha256": hash_path(public_key_path) if public_key_path and public_key_path.exists() else None,
-        "signing_certificate_path": signing_certificate_path.name if signing_certificate_path else None,
+        "public_key_path": copied_public_key_path.name if copied_public_key_path else None,
+        "public_key_sha256": hash_path(copied_public_key_path) if copied_public_key_path and copied_public_key_path.exists() else None,
+        "signing_certificate_path": copied_signing_certificate_path.name if copied_signing_certificate_path else None,
         "certificate_chain": [],
     }
-    if signing_certificate_path and signing_certificate_path.exists():
-        target_path = package_dir / signing_certificate_path.name
-        if signing_certificate_path.resolve() != target_path.resolve():
-            target_path.write_bytes(signing_certificate_path.read_bytes())
     for chain_path in certificate_chain_paths or []:
         target_path = package_dir / chain_path.name
         if chain_path.resolve() != target_path.resolve():
@@ -576,16 +582,20 @@ def sign_manifest(
     signing_certificate_path: Path | None = None,
 ) -> Path:
     signature_path = package_dir / "manifest.sig"
+    build_trust_metadata(package_dir, public_key_path, signer_label, certificate_chain_paths, signing_certificate_path)
+    manifest_path = package_dir / "manifest.json"
+    manifest = read_json(manifest_path)
+    manifest["package_hash_sha256"] = hash_package_contents(package_dir)
+    write_json(manifest_path, manifest)
     subprocess.run(
         [
             "openssl", "dgst", "-sha256", "-sign", str(private_key_path),
-            "-out", str(signature_path), str(package_dir / "manifest.json"),
+            "-out", str(signature_path), str(manifest_path),
         ],
         check=True,
         capture_output=True,
         text=True,
     )
-    build_trust_metadata(package_dir, public_key_path, signer_label, certificate_chain_paths, signing_certificate_path)
     return signature_path
 
 
