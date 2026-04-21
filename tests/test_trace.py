@@ -492,6 +492,30 @@ class TraceTests(unittest.TestCase):
                 verify_manifest_signature(package, public_key)
             self.assertIn("contains malformed JSON", str(ctx.exception))
 
+    def test_verify_package_requires_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ingest_case(FIXTURE, "CASE-NO-MANIFEST", "tester", "json", root / "cases")
+            classify_case(root / "cases" / "CASE-NO-MANIFEST", "tester")
+            package = export_case_report(root / "cases" / "CASE-NO-MANIFEST", root / "out", "tester")
+            (package / "manifest.json").unlink()
+            with self.assertRaises(FileNotFoundError) as ctx:
+                verify_evidence_package(package)
+            self.assertIn("is missing manifest.json", str(ctx.exception))
+
+    def test_verify_signature_reports_missing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ingest_case(FIXTURE, "CASE-SIG-NO-MANIFEST", "tester", "json", root / "cases")
+            classify_case(root / "cases" / "CASE-SIG-NO-MANIFEST", "tester")
+            package = export_case_report(root / "cases" / "CASE-SIG-NO-MANIFEST", root / "out", "tester")
+            _, _, private_key, public_key, signing_cert = self._build_ca_environment(root, "TRACE Missing Manifest Signer")
+            sign_manifest(package, private_key, public_key, "TRACE missing manifest signer", [], signing_cert)
+            (package / "manifest.json").unlink()
+            result = verify_manifest_signature(package, public_key)
+            self.assertFalse(result["manifest_present"])
+            self.assertFalse(result["all_pass"])
+
     def test_revoked_certificate_fails_verification(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

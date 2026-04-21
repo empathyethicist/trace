@@ -423,7 +423,10 @@ def write_report_pdf(
 
 
 def verify_evidence_package(package_dir: Path) -> dict:
-    manifest = read_json(package_dir / "manifest.json")
+    manifest_path = package_dir / "manifest.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"Package {package_dir} is missing manifest.json.")
+    manifest = read_json(manifest_path)
     checks = {
         "source_hash_present": bool(manifest.get("source_hash_sha256")),
         "classified_hash_matches": manifest.get("classified_hash_sha256") == hash_path(package_dir / "classified_transcript.json"),
@@ -442,14 +445,16 @@ def _read_trust_metadata_or_raise(trust_metadata_path: Path) -> dict:
 
 def verify_manifest_signature(package_dir: Path, public_key_path: Path) -> dict:
     signature_path = package_dir / "manifest.sig"
+    manifest_path = package_dir / "manifest.json"
     trust_metadata_path = package_dir / "trust_metadata.json"
     result = {
         "signature_present": signature_path.exists(),
+        "manifest_present": manifest_path.exists(),
         "public_key_present": public_key_path.exists(),
         "trust_metadata_present": trust_metadata_path.exists(),
         "signature_valid": False,
     }
-    if not result["signature_present"] or not result["public_key_present"]:
+    if not result["signature_present"] or not result["public_key_present"] or not result["manifest_present"]:
         result["all_pass"] = False
         return result
     completed = subprocess.run(
@@ -461,7 +466,7 @@ def verify_manifest_signature(package_dir: Path, public_key_path: Path) -> dict:
             str(public_key_path),
             "-signature",
             str(signature_path),
-            str(package_dir / "manifest.json"),
+            str(manifest_path),
         ],
         capture_output=True,
         text=True,
