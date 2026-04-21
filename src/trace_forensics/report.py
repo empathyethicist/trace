@@ -593,6 +593,12 @@ def sign_manifest(
     certificate_chain_paths: list[Path] | None = None,
     signing_certificate_path: Path | None = None,
 ) -> Path:
+    if not package_dir.exists():
+        raise FileNotFoundError(f"Package directory {package_dir} does not exist.")
+    if not private_key_path.exists():
+        raise FileNotFoundError(f"Private key {private_key_path} does not exist.")
+    if signing_certificate_path and not signing_certificate_path.exists():
+        raise FileNotFoundError(f"Signing certificate {signing_certificate_path} does not exist.")
     signature_path = package_dir / "manifest.sig"
     effective_public_key_path = public_key_path
     if effective_public_key_path is None:

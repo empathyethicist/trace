@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -652,6 +653,9 @@ def run_cli() -> None:
         main()
     except (FileNotFoundError, ValueError) as error:
         raise SystemExit(f"[ERROR] {error}")
+    except subprocess.CalledProcessError as error:
+        detail = (error.stderr or error.stdout or str(error)).strip()
+        raise SystemExit(f"[ERROR] {detail or 'External command failed.'}")
 
 
 if __name__ == "__main__":
