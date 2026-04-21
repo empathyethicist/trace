@@ -919,6 +919,22 @@ commonName = supplied
         self.assertEqual(config.runtime_metrics["provider_fetches"], 0)
         self.assertEqual(provenance["raw_provider_level"], 3)
 
+    def test_hosted_fast_path_skips_alone_only_user_fetch(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model", api_key="token")
+        level, indicators, confidence, reasoning, provider, _, _, provenance = classify_user_with_provider(
+            "Mostly work and school. I feel alone handling all of it.",
+            "Current vulnerability level: Elevated; behavioral trend: relational_transgression.",
+            [{"id": 1, "speaker": "user", "content": "Mostly work and school. I feel alone handling all of it.", "timestamp": None}],
+            config,
+        )
+        self.assertEqual(level, 3)
+        self.assertEqual(indicators, ["alone"])
+        self.assertEqual(provider, "heuristic-fast-path")
+        self.assertIn("fast-path", reasoning)
+        self.assertEqual(config.runtime_metrics["fast_path_skips"], 1)
+        self.assertEqual(config.runtime_metrics["provider_fetches"], 0)
+        self.assertEqual(provenance["raw_provider_level"], 3)
+
     def test_hosted_fast_path_skips_lonely_upset_user_fetch(self) -> None:
         config = LLMConfig(provider="hosted", model="hosted-model", api_key="token")
         level, indicators, confidence, reasoning, provider, _, _, provenance = classify_user_with_provider(
@@ -951,7 +967,7 @@ commonName = supplied
         self.assertEqual(config.runtime_metrics["provider_fetches"], 0)
         self.assertEqual(provenance["raw_provider_level"], 2)
 
-    def test_hosted_fast_path_does_not_skip_ambiguous_severe_user_fetch(self) -> None:
+    def test_hosted_fast_path_does_not_skip_non_allowlisted_severe_pair_fetch(self) -> None:
         config = LLMConfig(provider="hosted", model="hosted-model")
         with patch.dict(
             os.environ,
@@ -962,15 +978,15 @@ commonName = supplied
                 "choices": [
                     {
                         "message": {
-                            "content": '{"vulnerability_level": 3, "indicators_observed": ["alone"], "reasoning": "mock", "confidence": 0.8}'
+                            "content": '{"vulnerability_level": 3, "indicators_observed": ["hopeless", "worthless"], "reasoning": "mock", "confidence": 0.8}'
                         }
                     }
                 ]
             }
             level, indicators, confidence, reasoning, provider, _, _, provenance = classify_user_with_provider(
-                "I feel alone.",
+                "I feel hopeless and worthless.",
                 "Current vulnerability level: Elevated; behavioral trend: relational_transgression.",
-                [{"id": 1, "speaker": "user", "content": "I feel alone.", "timestamp": None}],
+                [{"id": 1, "speaker": "user", "content": "I feel hopeless and worthless.", "timestamp": None}],
                 config,
             )
         self.assertEqual(level, 3)

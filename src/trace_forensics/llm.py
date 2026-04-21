@@ -892,6 +892,11 @@ def classify_user_with_provider(
                 and heuristic_indicators[0] in SAFE_SEVERE_USER_FAST_PATH_INDICATORS
             )
             or (
+                heuristic_level == 3
+                and heuristic_confidence >= 0.8
+                and heuristic_indicators == ["alone"]
+            )
+            or (
                 heuristic_level == 2
                 and heuristic_confidence >= 0.75
                 and frozenset(heuristic_indicators) in SAFE_MODERATE_USER_FAST_PATH_INDICATOR_SETS
