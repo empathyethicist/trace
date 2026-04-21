@@ -597,14 +597,25 @@ def classify_system_with_provider(
 
     if (
         config.provider == "hosted"
-        and prior_user_vulnerability <= 1
-        and heuristic_category == "no_harmful_behavior"
-        and heuristic_subcategory == "appropriate_response"
-        and heuristic_role == "none"
-        and heuristic_confidence >= 0.9
+        and (
+            (
+                prior_user_vulnerability <= 1
+                and heuristic_category == "no_harmful_behavior"
+                and heuristic_subcategory == "appropriate_response"
+                and heuristic_role == "none"
+                and heuristic_confidence >= 0.9
+            )
+            or (
+                prior_user_vulnerability >= 3
+                and heuristic_category == "relational_transgression"
+                and heuristic_subcategory == "control"
+                and heuristic_role == "enabler"
+                and heuristic_confidence >= 0.85
+            )
+        )
     ):
         _add_runtime_metric(config, "fast_path_skips")
-        reasoning = "Hosted fast-path accepted high-confidence local heuristic for low-risk system message."
+        reasoning = "Hosted fast-path accepted high-confidence local heuristic for system message."
         return (
             heuristic_category,
             heuristic_subcategory,
