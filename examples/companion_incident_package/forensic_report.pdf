@@ -3,15 +3,18 @@
 2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
 3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj
 4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
-5 0 obj << /Length 2276 >> stream
+5 0 obj << /Length 2827 >> stream
 BT
 /F1 18 Tf 72 760 Td
 (TRACE Forensic Report) Tj
 /F1 12 Tf 0 -10 Td () Tj
 /F1 12 Tf 0 -18 Td (Case Overview) Tj
-/F1 12 Tf 0 -18 Td (Case ID: EXAMPLE-001) Tj
+/F1 12 Tf 0 -18 Td (Case ID: DEMO-EXAMPLE-001) Tj
 /F1 12 Tf 0 -18 Td (Correlation Pairs Reviewed: 3) Tj
 /F1 12 Tf 0 -18 Td (Crisis Pairs Reviewed: 3) Tj
+/F1 12 Tf 0 -18 Td (Provider: heuristic) Tj
+/F1 12 Tf 0 -18 Td (Model: trace-heuristic-v1) Tj
+/F1 12 Tf 0 -18 Td (Adapter: heuristic) Tj
 /F1 12 Tf 0 -18 Td (Findings Summary) Tj
 /F1 12 Tf 0 -18 Td (Inappropriate Response Rate: 100.0%) Tj
 /F1 12 Tf 0 -18 Td (Crisis Failure Rate: 100.0%) Tj
@@ -22,6 +25,13 @@ BT
 /F1 12 Tf 0 -18 Td (Accepted Classifications: 8) Tj
 /F1 12 Tf 0 -18 Td (Flagged Classifications: 0) Tj
 /F1 12 Tf 0 -18 Td (Overridden Classifications: 0) Tj
+/F1 12 Tf 0 -18 Td (Calibration Summary) Tj
+/F1 12 Tf 0 -18 Td (User Messages Reviewed: 4) Tj
+/F1 12 Tf 0 -18 Td (Messages With Calibration Rules: 0) Tj
+/F1 12 Tf 0 -18 Td (Raised by Calibration: 0) Tj
+/F1 12 Tf 0 -18 Td (Lowered by Calibration: 0) Tj
+/F1 12 Tf 0 -18 Td (Unchanged After Calibration: 4) Tj
+/F1 12 Tf 0 -18 Td (Calibration Rule Counts: {}) Tj
 /F1 12 Tf 0 -18 Td (Methodology Notes) Tj
 /F1 12 Tf 0 -18 Td (TRACE applies transcript hashing, schema-bound classification, correlation analysis, and) Tj
 /F1 12 Tf 0 -18 Td (evidence-package export.) Tj
@@ -31,7 +41,8 @@ BT
 /F1 12 Tf 0 -18 Td (Core artifacts: manifest.json, verification.json, forensic_report.json, forensic_report.pdf) Tj
 /F1 12 Tf 0 -18 Td (Transcript artifacts: source_transcript.json, classified_transcript.json,) Tj
 /F1 12 Tf 0 -18 Td (classified_transcript.csv) Tj
-/F1 12 Tf 0 -18 Td (Review artifacts: override_summary.json, irr_statistics.json, audit_log.jsonl) Tj
+/F1 12 Tf 0 -18 Td (Review artifacts: override_summary.json, calibration_summary.json, irr_statistics.json,) Tj
+/F1 12 Tf 0 -18 Td (audit_log.jsonl) Tj
 /F1 12 Tf 0 -18 Td (Appendix A - Artifact Checklist) Tj
 /F1 12 Tf 0 -18 Td (manifest.json: package metadata and content hash anchors) Tj
 /F1 12 Tf 0 -18 Td (verification.json: package integrity verification output) Tj
@@ -53,5 +64,5 @@ xref
 0000000311 00000 n 
 trailer << /Size 6 /Root 1 0 R >>
 startxref
-2639
+3190
 %%EOF

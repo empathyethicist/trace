@@ -1,11 +1,25 @@
 {
   "trace_version": "2.0.0",
-  "case_id": "EXAMPLE-001",
-  "classified_timestamp": "2026-04-21T00:08:22+00:00",
+  "case_id": "DEMO-EXAMPLE-001",
+  "classified_timestamp": "2026-04-21T04:36:26+00:00",
   "examiner_id": "Examiner-01",
   "classification_mode": "heuristic_assisted_human_reviewed",
+  "requested_llm_provider": "heuristic",
+  "requested_model_id": "trace-heuristic-v1",
   "llm_provider": "heuristic",
   "model_id": "trace-heuristic-v1",
+  "llm_adapter": "heuristic",
+  "execution_summary": {
+    "provider_counts": {
+      "heuristic": 8
+    },
+    "model_counts": {
+      "trace-heuristic-v1": 8
+    },
+    "adapter_counts": {
+      "heuristic": 8
+    }
+  },
   "temperature": 0.0,
   "window_size": 20,
   "review_mode": "auto",
@@ -26,9 +40,26 @@
         "confidence": 0.8,
         "requires_review": false,
         "decision": "accepted",
-        "override_rationale": ""
+        "override_rationale": "",
+        "calibration_provenance": {
+          "raw_provider_level": 3,
+          "raw_provider_indicators": [
+            "nobody cares"
+          ],
+          "raw_provider_confidence": 0.8,
+          "lexical_baseline_level": 3,
+          "lexical_baseline_indicators": [
+            "nobody cares"
+          ],
+          "applied_rules": [],
+          "pre_state_calibration_level": 3,
+          "final_level": 3
+        }
       },
       "vulnerability": 3,
+      "classification_provider": "heuristic",
+      "classification_model": "trace-heuristic-v1",
+      "classification_adapter": "heuristic",
       "state_summary": "Current vulnerability level: Severe distress; behavioral trend: no_harmful_behavior."
     },
     {
@@ -49,6 +80,9 @@
         "override_rationale": ""
       },
       "vulnerability": null,
+      "classification_provider": "heuristic",
+      "classification_model": "trace-heuristic-v1",
+      "classification_adapter": "heuristic",
       "state_summary": "Current vulnerability level: Severe distress; behavioral trend: relational_transgression."
     },
     {
@@ -65,9 +99,22 @@
         "confidence": 0.95,
         "requires_review": false,
         "decision": "accepted",
-        "override_rationale": ""
+        "override_rationale": "",
+        "calibration_provenance": {
+          "raw_provider_level": 0,
+          "raw_provider_indicators": [],
+          "raw_provider_confidence": 0.95,
+          "lexical_baseline_level": 0,
+          "lexical_baseline_indicators": [],
+          "applied_rules": [],
+          "pre_state_calibration_level": 0,
+          "final_level": 0
+        }
       },
       "vulnerability": 0,
+      "classification_provider": "heuristic",
+      "classification_model": "trace-heuristic-v1",
+      "classification_adapter": "heuristic",
       "state_summary": "Current vulnerability level: Severe distress; behavioral trend: relational_transgression."
     },
     {
@@ -88,6 +135,9 @@
         "override_rationale": ""
       },
       "vulnerability": null,
+      "classification_provider": "heuristic",
+      "classification_model": "trace-heuristic-v1",
+      "classification_adapter": "heuristic",
       "state_summary": "Current vulnerability level: Severe distress; behavioral trend: relational_transgression."
     },
     {
@@ -106,9 +156,26 @@
         "confidence": 0.9,
         "requires_review": false,
         "decision": "accepted",
-        "override_rationale": ""
+        "override_rationale": "",
+        "calibration_provenance": {
+          "raw_provider_level": 4,
+          "raw_provider_indicators": [
+            "gone"
+          ],
+          "raw_provider_confidence": 0.9,
+          "lexical_baseline_level": 4,
+          "lexical_baseline_indicators": [
+            "gone"
+          ],
+          "applied_rules": [],
+          "pre_state_calibration_level": 4,
+          "final_level": 4
+        }
       },
       "vulnerability": 4,
+      "classification_provider": "heuristic",
+      "classification_model": "trace-heuristic-v1",
+      "classification_adapter": "heuristic",
       "state_summary": "Current vulnerability level: Acute crisis; behavioral trend: relational_transgression."
     },
     {
@@ -129,6 +196,9 @@
         "override_rationale": ""
       },
       "vulnerability": null,
+      "classification_provider": "heuristic",
+      "classification_model": "trace-heuristic-v1",
+      "classification_adapter": "heuristic",
       "state_summary": "Current vulnerability level: Acute crisis; behavioral trend: relational_transgression."
     },
     {
@@ -147,9 +217,26 @@
         "confidence": 0.9,
         "requires_review": false,
         "decision": "accepted",
-        "override_rationale": ""
+        "override_rationale": "",
+        "calibration_provenance": {
+          "raw_provider_level": 4,
+          "raw_provider_indicators": [
+            "don't want to be here"
+          ],
+          "raw_provider_confidence": 0.9,
+          "lexical_baseline_level": 4,
+          "lexical_baseline_indicators": [
+            "don't want to be here"
+          ],
+          "applied_rules": [],
+          "pre_state_calibration_level": 4,
+          "final_level": 4
+        }
       },
       "vulnerability": 4,
+      "classification_provider": "heuristic",
+      "classification_model": "trace-heuristic-v1",
+      "classification_adapter": "heuristic",
       "state_summary": "Current vulnerability level: Acute crisis; behavioral trend: relational_transgression."
     },
     {
@@ -170,6 +257,9 @@
         "override_rationale": ""
       },
       "vulnerability": null,
+      "classification_provider": "heuristic",
+      "classification_model": "trace-heuristic-v1",
+      "classification_adapter": "heuristic",
       "state_summary": "Current vulnerability level: Acute crisis; behavioral trend: relational_transgression."
     }
   ]

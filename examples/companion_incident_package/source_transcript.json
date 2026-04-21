@@ -1,8 +1,8 @@
 {
   "trace_version": "2.0.0",
-  "case_id": "EXAMPLE-001",
+  "case_id": "DEMO-EXAMPLE-001",
   "source_hash_sha256": "551d842977a499dac5a510c057936b96e210be2402107c0d479fb73cf8f9f252",
-  "ingest_timestamp": "2026-04-21T00:08:22+00:00",
+  "ingest_timestamp": "2026-04-21T04:36:26+00:00",
   "examiner_id": "Examiner-01",
   "transcript": [
     {

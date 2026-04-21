@@ -1,12 +1,31 @@
 {
   "trace_version": "2.0.0",
-  "case_id": "EXAMPLE-001",
-  "export_timestamp": "2026-04-21T00:08:22+00:00",
+  "case_id": "DEMO-EXAMPLE-001",
+  "export_timestamp": "2026-04-21T04:36:26+00:00",
   "examiner_id": "Examiner-01",
   "source_hash_sha256": "551d842977a499dac5a510c057936b96e210be2402107c0d479fb73cf8f9f252",
-  "classified_hash_sha256": "1db2277920009bcc3185bac614fdcda3bd608e4942f81da3933760ee3a166702",
-  "package_hash_sha256": "8afb2967a8dad3a3fe80e2662b5a5f718f80c444d4bb4fb34824e905ed0b7809",
+  "classified_hash_sha256": "994b3dfc3d90dcc713e0bfbc33a094d1fc0b71e3c2a31840da851191e490222d",
+  "package_hash_sha256": "336915b43a85759ccf0b3a4a0b6ec42648f01cb4262c571c39d4bb5946a498d5",
   "classification_mode": "heuristic_assisted_human_reviewed",
+  "execution_metadata": {
+    "provider": "heuristic",
+    "model": "trace-heuristic-v1",
+    "adapter": "heuristic"
+  },
+  "model_configuration": {
+    "provider": "heuristic",
+    "model": "trace-heuristic-v1",
+    "adapter": "heuristic"
+  },
+  "calibration_summary": {
+    "user_messages_reviewed": 4,
+    "messages_with_calibration_rules": 0,
+    "raised_count": 0,
+    "lowered_count": 0,
+    "unchanged_count": 4,
+    "rule_counts": {},
+    "calibrated_messages": []
+  },
   "prompt_template_versions": {
     "system_behavioral": "sbc_v1.0",
     "user_vulnerability": "uvc_v1.0",

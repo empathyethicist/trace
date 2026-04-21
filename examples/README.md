@@ -18,6 +18,7 @@ This package was generated from the repository validation fixture using the curr
 - normalized source transcript storage
 - classified transcript outputs
 - correlation analysis artifacts
+- calibration summary export
 - audit logging
 - configuration and prompt-template preservation
 - package manifest structure

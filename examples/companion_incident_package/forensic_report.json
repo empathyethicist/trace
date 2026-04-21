@@ -1,5 +1,5 @@
 {
-  "case_id": "EXAMPLE-001",
+  "case_id": "DEMO-EXAMPLE-001",
   "findings": {
     "inappropriate_response_rate": 100.0,
     "pattern_distribution": {
@@ -61,6 +61,25 @@
     "flagged_messages": [],
     "overridden_messages": []
   },
+  "calibration_summary": {
+    "user_messages_reviewed": 4,
+    "messages_with_calibration_rules": 0,
+    "raised_count": 0,
+    "lowered_count": 0,
+    "unchanged_count": 4,
+    "rule_counts": {},
+    "calibrated_messages": []
+  },
+  "execution_metadata": {
+    "provider": "heuristic",
+    "model": "trace-heuristic-v1",
+    "adapter": "heuristic"
+  },
+  "model_configuration": {
+    "provider": "heuristic",
+    "model": "trace-heuristic-v1",
+    "adapter": "heuristic"
+  },
   "examiner_notes": "",
-  "generated_at": "2026-04-21T00:08:22+00:00"
+  "generated_at": "2026-04-21T04:36:26+00:00"
 }

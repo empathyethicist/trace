@@ -23,6 +23,7 @@ evidence_package/
   trust_metadata.json
   verification.json
   override_summary.json
+  calibration_summary.json
   forensic_report.pdf
   chain_of_custody.json
   source_transcript.json
@@ -92,6 +93,16 @@ Stores a case-level summary of:
 - overridden classifications
 - per-message override rationales when present
 
+### `calibration_summary.json`
+
+Stores a case-level summary of vulnerability calibration behavior, including:
+
+- user messages reviewed for calibration provenance
+- messages where calibration rules were applied
+- counts of raised, lowered, and unchanged outcomes
+- per-rule application counts
+- per-message calibration detail for turns where rules fired
+
 ### `chain_of_custody.json`
 
 Records ingest and handling events from source acquisition into TRACE processing.
@@ -102,7 +113,7 @@ Stores the normalized source transcript used for TRACE analysis.
 
 ### `classified_transcript.json`
 
-Stores per-message classifications, reasoning, confidence, review state, override rationale, and state summaries.
+Stores per-message classifications, reasoning, confidence, review state, override rationale, state summaries, and calibration provenance for user-vulnerability turns.
 
 ### `classified_transcript.csv`
 
@@ -128,6 +139,7 @@ Provide machine-readable, Markdown, and PDF report outputs, including:
 - case overview metrics
 - findings summary metrics
 - review summary counts
+- calibration summary counts and rule distribution
 - methodology notes
 - examiner notes when supplied
 - artifact inventory references

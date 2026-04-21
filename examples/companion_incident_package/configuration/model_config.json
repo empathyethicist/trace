@@ -1,5 +1,6 @@
 {
   "provider": "heuristic",
   "model": "trace-heuristic-v1",
+  "adapter": "heuristic",
   "temperature": 0.0
 }

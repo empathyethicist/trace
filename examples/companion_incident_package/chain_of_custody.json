@@ -1,10 +1,10 @@
 [
   {
     "event": "ingest",
-    "timestamp": "2026-04-21T00:08:22+00:00",
+    "timestamp": "2026-04-21T04:36:26+00:00",
     "examiner_id": "Examiner-01",
-    "source_path": "validation/companion_incident.json",
+    "source_path": "/home/dylan/trace/validation/companion_incident.json",
     "source_hash_sha256": "551d842977a499dac5a510c057936b96e210be2402107c0d479fb73cf8f9f252",
-    "normalized_hash_sha256": "2a83bf44c709f7b9da3e12fcbd13d4afd81c36e32cc38f162dee4dabf2743070"
+    "normalized_hash_sha256": "ec1b68c31251890e9e1e042f08c306d17a11f2e897b70343e010fe9cc303f475"
   }
 ]

@@ -2,9 +2,12 @@
 
 ## Case Overview
 
-- Case ID: `EXAMPLE-001`
+- Case ID: `DEMO-EXAMPLE-001`
 - Correlation Pairs Reviewed: `3`
 - Crisis Pairs Reviewed: `3`
+- Provider: `heuristic`
+- Model: `trace-heuristic-v1`
+- Adapter: `heuristic`
 
 ## Findings Summary
 
@@ -28,6 +31,15 @@
 - Flagged Classifications: `0`
 - Overridden Classifications: `0`
 
+## Calibration Summary
+
+- User Messages Reviewed: `4`
+- Messages With Calibration Rules: `0`
+- Raised by Calibration: `0`
+- Lowered by Calibration: `0`
+- Unchanged After Calibration: `4`
+- Calibration Rule Counts: `{}`
+
 ## Methodology Notes
 
 - TRACE applies transcript hashing, schema-bound classification, correlation analysis, and evidence-package export.
@@ -37,7 +49,7 @@
 
 - Core artifacts: `manifest.json`, `verification.json`, `forensic_report.json`, `forensic_report.pdf`
 - Transcript artifacts: `source_transcript.json`, `classified_transcript.json`, `classified_transcript.csv`
-- Review artifacts: `override_summary.json`, `irr_statistics.json`, `audit_log.jsonl`
+- Review artifacts: `override_summary.json`, `calibration_summary.json`, `irr_statistics.json`, `audit_log.jsonl`
 
 ## Appendix A — Artifact Checklist
 
