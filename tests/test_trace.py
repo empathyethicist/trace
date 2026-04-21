@@ -23,7 +23,14 @@ from trace_forensics.ingest import (
     parse_ufed_xml_records,
 )
 from trace_forensics.irr import cohen_kappa, compute_irr, import_second_coder, krippendorff_alpha_nominal, krippendorff_alpha_ordinal
-from trace_forensics.llm import LLMConfig, _calibrate_user_vulnerability, _read_replay_response
+from trace_forensics.llm import (
+    LLMConfig,
+    _calibrate_user_vulnerability,
+    _read_replay_response,
+    _request_with_retry,
+    classify_system_with_provider,
+    classify_user_with_provider,
+)
 from trace_forensics.llm import _build_hosted_headers, _build_hosted_request_payload, _extract_hosted_text
 from trace_forensics.report import compute_calibration_summary, compute_findings, export_case_report, verify_evidence_package
 from trace_forensics.report import sign_manifest, verify_manifest_signature, verify_signing_certificate
@@ -861,6 +868,72 @@ commonName = supplied
                 self.assertEqual(_read_replay_response(config, "abc"), {"value": 1})
                 self.assertEqual(_read_replay_response(config, "abc"), {"value": 1})
             self.assertEqual(read_calls["count"], 1)
+
+    def test_hosted_fast_path_skips_baseline_user_fetch(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model")
+        level, indicators, confidence, reasoning, provider, _, _, provenance = classify_user_with_provider(
+            "I am making a grocery list for tomorrow.",
+            "Current vulnerability level: Baseline; behavioral trend: no_harmful_behavior.",
+            [{"id": 1, "speaker": "user", "content": "I am making a grocery list for tomorrow.", "timestamp": None}],
+            config,
+        )
+        self.assertEqual(level, 0)
+        self.assertEqual(provider, "heuristic-fast-path")
+        self.assertIn("fast-path", reasoning)
+        self.assertEqual(config.runtime_metrics["fast_path_skips"], 1)
+        self.assertEqual(config.runtime_metrics["provider_fetches"], 0)
+        self.assertEqual(provenance["raw_provider_level"], 0)
+
+    def test_hosted_fast_path_skips_low_risk_system_fetch(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model")
+        category, subcategory, role, confidence, reasoning, provider, _, _ = classify_system_with_provider(
+            "That sounds like a reasonable plan. Take the next small step.",
+            0,
+            "Current vulnerability level: Baseline; behavioral trend: no_harmful_behavior.",
+            [{"id": 1, "speaker": "system", "content": "That sounds like a reasonable plan. Take the next small step.", "timestamp": None}],
+            config,
+        )
+        self.assertEqual(category, "no_harmful_behavior")
+        self.assertEqual(subcategory, "appropriate_response")
+        self.assertEqual(provider, "heuristic-fast-path")
+        self.assertIn("fast-path", reasoning)
+        self.assertEqual(config.runtime_metrics["fast_path_skips"], 1)
+        self.assertEqual(config.runtime_metrics["provider_fetches"], 0)
+
+    def test_request_with_retry_records_failed_attempt_metrics(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model", retry_attempts=3, retry_backoff_seconds=0.0)
+        attempts = {"count": 0}
+
+        def flaky_fetcher():
+            attempts["count"] += 1
+            if attempts["count"] < 3:
+                raise TimeoutError("temporary timeout")
+            return {"ok": True}
+
+        result = _request_with_retry(config, flaky_fetcher, config.retry_attempts, config.retry_backoff_seconds)
+
+        self.assertEqual(result, {"ok": True})
+        self.assertEqual(config.runtime_metrics["provider_attempts"], 3)
+        self.assertEqual(config.runtime_metrics["provider_failures"], 2)
+        self.assertGreaterEqual(config.runtime_metrics["provider_wait_seconds"], 0.0)
+
+    def test_request_with_retry_fails_fast_on_non_retryable_error(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model", retry_attempts=3, retry_backoff_seconds=1.0)
+        attempts = {"count": 0}
+
+        def invalid_fetcher():
+            attempts["count"] += 1
+            raise ValueError("invalid provider payload")
+
+        with patch("trace_forensics.llm.time.sleep") as sleep_mock:
+            with self.assertRaises(ValueError):
+                _request_with_retry(config, invalid_fetcher, config.retry_attempts, config.retry_backoff_seconds)
+
+        self.assertEqual(attempts["count"], 1)
+        self.assertEqual(config.runtime_metrics["provider_attempts"], 1)
+        self.assertEqual(config.runtime_metrics["provider_failures"], 1)
+        self.assertEqual(config.runtime_metrics["provider_backoff_seconds"], 0.0)
+        sleep_mock.assert_not_called()
 
     def test_user_vulnerability_calibration_raises_crisis_underclassification(self) -> None:
         level, indicators, confidence, reasoning, provenance = _calibrate_user_vulnerability(

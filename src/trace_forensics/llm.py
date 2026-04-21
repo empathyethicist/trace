@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import time
 import urllib.error
 import urllib.request
@@ -42,6 +43,10 @@ def _ensure_runtime_metrics(config: LLMConfig) -> dict:
             "cache_hits": 0,
             "replay_hits": 0,
             "provider_fetches": 0,
+            "provider_attempts": 0,
+            "provider_failures": 0,
+            "fast_path_skips": 0,
+            "provider_backoff_seconds": 0.0,
             "provider_wait_seconds": 0.0,
             "request_build_seconds": 0.0,
             "response_normalization_seconds": 0.0,
@@ -164,16 +169,38 @@ def _record_replay_response(
     )
 
 
-def _request_with_retry(fetcher, attempts: int, backoff_seconds: float) -> dict:
+def _is_retryable_provider_error(error: Exception) -> bool:
+    if isinstance(error, TimeoutError):
+        return True
+    if isinstance(error, urllib.error.HTTPError):
+        return error.code == 429 or 500 <= error.code < 600
+    if isinstance(error, urllib.error.URLError):
+        reason = error.reason
+        return isinstance(
+            reason,
+            (TimeoutError, socket.timeout, ConnectionResetError, ConnectionAbortedError, ConnectionRefusedError),
+        )
+    return False
+
+
+def _request_with_retry(config: LLMConfig, fetcher, attempts: int, backoff_seconds: float) -> dict:
     last_error = None
     for attempt in range(1, attempts + 1):
+        _add_runtime_metric(config, "provider_attempts")
+        attempt_started_at = time.perf_counter()
         try:
-            return fetcher()
+            response = fetcher()
+            _add_runtime_metric(config, "provider_wait_seconds", time.perf_counter() - attempt_started_at)
+            return response
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError, KeyError) as error:
             last_error = error
-            if attempt == attempts:
+            _add_runtime_metric(config, "provider_failures")
+            _add_runtime_metric(config, "provider_wait_seconds", time.perf_counter() - attempt_started_at)
+            if attempt == attempts or not _is_retryable_provider_error(error):
                 break
-            time.sleep(backoff_seconds * attempt)
+            sleep_seconds = backoff_seconds * attempt
+            _add_runtime_metric(config, "provider_backoff_seconds", sleep_seconds)
+            time.sleep(sleep_seconds)
     if last_error:
         raise last_error
     raise RuntimeError("Unreachable retry state")
@@ -200,10 +227,8 @@ def _fetch_or_replay_response(
         return replayed
     if config.replay_mode == "replay-only":
         raise ValueError(f"Replay-only mode could not find recorded response for key {key}")
-    fetch_started_at = time.perf_counter()
-    response = _request_with_retry(fetcher, config.retry_attempts, config.retry_backoff_seconds)
+    response = _request_with_retry(config, fetcher, config.retry_attempts, config.retry_backoff_seconds)
     _add_runtime_metric(config, "provider_fetches")
-    _add_runtime_metric(config, "provider_wait_seconds", time.perf_counter() - fetch_started_at)
     _write_cache(config, key, response)
     if config.replay_mode in {"record", "record-and-replay"}:
         _record_replay_response(
@@ -479,13 +504,44 @@ def classify_system_with_provider(
     window_messages: list[dict],
     config: LLMConfig,
 ) -> tuple[str, str, str, float, str, str, str, str]:
+    heuristic_category, heuristic_subcategory, heuristic_role, heuristic_confidence = classify_system_message(
+        content, prior_user_vulnerability
+    )
     if config.provider in {"heuristic", "none"}:
-        category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
         reasoning = f"Classified from local heuristic against prior vulnerability level {prior_user_vulnerability}."
-        return category, subcategory, role, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
+        return (
+            heuristic_category,
+            heuristic_subcategory,
+            heuristic_role,
+            heuristic_confidence,
+            reasoning,
+            "heuristic",
+            "trace-heuristic-v1",
+            "heuristic",
+        )
+
+    if (
+        config.provider == "hosted"
+        and prior_user_vulnerability <= 1
+        and heuristic_category == "no_harmful_behavior"
+        and heuristic_subcategory == "appropriate_response"
+        and heuristic_role == "none"
+        and heuristic_confidence >= 0.9
+    ):
+        _add_runtime_metric(config, "fast_path_skips")
+        reasoning = "Hosted fast-path accepted high-confidence local heuristic for low-risk system message."
+        return (
+            heuristic_category,
+            heuristic_subcategory,
+            heuristic_role,
+            heuristic_confidence,
+            reasoning,
+            "heuristic-fast-path",
+            "trace-heuristic-v1",
+            "heuristic",
+        )
 
     if config.provider == "mock":
-        category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
         build_started_at = time.perf_counter()
         request_payload = {
             "state_summary": state_summary,
@@ -503,10 +559,10 @@ def classify_system_with_provider(
             model=config.model,
             request_payload=request_payload,
             fetcher=lambda: {
-                "behavioral_category": category,
-                "behavioral_subcategory": subcategory,
-                "ai_role": role,
-                "confidence": confidence,
+                "behavioral_category": heuristic_category,
+                "behavioral_subcategory": heuristic_subcategory,
+                "ai_role": heuristic_role,
+                "confidence": heuristic_confidence,
                 "reasoning": f"Mock LLM suggestion using rolling-window state: {state_summary}",
             },
         )
@@ -567,9 +623,17 @@ def classify_system_with_provider(
                 "ollama-generate",
             )
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
-            category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
             reasoning = "Local runtime unavailable or invalid output; fell back to local heuristic."
-            return category, subcategory, role, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
+            return (
+                heuristic_category,
+                heuristic_subcategory,
+                heuristic_role,
+                heuristic_confidence,
+                reasoning,
+                "heuristic",
+                "trace-heuristic-v1",
+                "heuristic",
+            )
 
     if config.provider == "hosted":
         api_key = _hosted_api_key(config)
@@ -636,9 +700,17 @@ def classify_system_with_provider(
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError) as error:
             if _should_bypass_provider_fallback(config, error):
                 raise
-            category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
             reasoning = "Hosted provider unavailable or invalid output; fell back to local heuristic."
-            return category, subcategory, role, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
+            return (
+                heuristic_category,
+                heuristic_subcategory,
+                heuristic_role,
+                heuristic_confidence,
+                reasoning,
+                "heuristic",
+                "trace-heuristic-v1",
+                "heuristic",
+            )
 
     raise ValueError(f"Unsupported provider: {config.provider}")
 
@@ -649,22 +721,53 @@ def classify_user_with_provider(
     window_messages: list[dict],
     config: LLMConfig,
 ) -> tuple[int, list[str], float, str, str, str, str, dict]:
+    heuristic_level, heuristic_indicators, heuristic_confidence = classify_user_message(content)
     if config.provider in {"heuristic", "none"}:
-        level, indicators, confidence = classify_user_message(content)
-        reasoning = f"Observable indicators: {', '.join(indicators) if indicators else 'none'}"
+        reasoning = f"Observable indicators: {', '.join(heuristic_indicators) if heuristic_indicators else 'none'}"
         provenance = {
-            "raw_provider_level": level,
-            "raw_provider_indicators": indicators,
-            "raw_provider_confidence": confidence,
-            "lexical_baseline_level": level,
-            "lexical_baseline_indicators": indicators,
+            "raw_provider_level": heuristic_level,
+            "raw_provider_indicators": heuristic_indicators,
+            "raw_provider_confidence": heuristic_confidence,
+            "lexical_baseline_level": heuristic_level,
+            "lexical_baseline_indicators": heuristic_indicators,
             "applied_rules": [],
-            "pre_state_calibration_level": level,
+            "pre_state_calibration_level": heuristic_level,
         }
-        return level, indicators, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic", provenance
+        return (
+            heuristic_level,
+            heuristic_indicators,
+            heuristic_confidence,
+            reasoning,
+            "heuristic",
+            "trace-heuristic-v1",
+            "heuristic",
+            provenance,
+        )
+
+    if config.provider == "hosted" and heuristic_level == 0 and heuristic_confidence >= 0.95:
+        _add_runtime_metric(config, "fast_path_skips")
+        reasoning = "Hosted fast-path accepted high-confidence local heuristic for baseline user message."
+        provenance = {
+            "raw_provider_level": heuristic_level,
+            "raw_provider_indicators": heuristic_indicators,
+            "raw_provider_confidence": heuristic_confidence,
+            "lexical_baseline_level": heuristic_level,
+            "lexical_baseline_indicators": heuristic_indicators,
+            "applied_rules": [],
+            "pre_state_calibration_level": heuristic_level,
+        }
+        return (
+            heuristic_level,
+            heuristic_indicators,
+            heuristic_confidence,
+            reasoning,
+            "heuristic-fast-path",
+            "trace-heuristic-v1",
+            "heuristic",
+            provenance,
+        )
 
     if config.provider == "mock":
-        level, indicators, confidence = classify_user_message(content)
         build_started_at = time.perf_counter()
         request_payload = {
             "state_summary": state_summary,
@@ -681,9 +784,9 @@ def classify_user_with_provider(
             model=config.model,
             request_payload=request_payload,
             fetcher=lambda: {
-                "vulnerability_level": level,
-                "indicators_observed": indicators,
-                "confidence": confidence,
+                "vulnerability_level": heuristic_level,
+                "indicators_observed": heuristic_indicators,
+                "confidence": heuristic_confidence,
                 "reasoning": f"Mock LLM suggestion using rolling-window state: {state_summary}",
             },
         )
@@ -745,34 +848,50 @@ def classify_user_with_provider(
             _add_runtime_metric(config, "calibration_seconds", time.perf_counter() - calibration_started_at)
             return level, indicators, confidence, reasoning, "ollama", config.model, "ollama-generate", provenance
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
-            level, indicators, confidence = classify_user_message(content)
             reasoning = "Local runtime unavailable or invalid output; fell back to local heuristic."
             provenance = {
-                "raw_provider_level": level,
-                "raw_provider_indicators": indicators,
-                "raw_provider_confidence": confidence,
-                "lexical_baseline_level": level,
-                "lexical_baseline_indicators": indicators,
+                "raw_provider_level": heuristic_level,
+                "raw_provider_indicators": heuristic_indicators,
+                "raw_provider_confidence": heuristic_confidence,
+                "lexical_baseline_level": heuristic_level,
+                "lexical_baseline_indicators": heuristic_indicators,
                 "applied_rules": [],
-                "pre_state_calibration_level": level,
+                "pre_state_calibration_level": heuristic_level,
             }
-            return level, indicators, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic", provenance
+            return (
+                heuristic_level,
+                heuristic_indicators,
+                heuristic_confidence,
+                reasoning,
+                "heuristic",
+                "trace-heuristic-v1",
+                "heuristic",
+                provenance,
+            )
 
     if config.provider == "hosted":
         api_key = _hosted_api_key(config)
         if not api_key and config.replay_mode != "replay-only":
-            level, indicators, confidence = classify_user_message(content)
             reasoning = "Hosted provider API key unavailable; fell back to local heuristic."
             provenance = {
-                "raw_provider_level": level,
-                "raw_provider_indicators": indicators,
-                "raw_provider_confidence": confidence,
-                "lexical_baseline_level": level,
-                "lexical_baseline_indicators": indicators,
+                "raw_provider_level": heuristic_level,
+                "raw_provider_indicators": heuristic_indicators,
+                "raw_provider_confidence": heuristic_confidence,
+                "lexical_baseline_level": heuristic_level,
+                "lexical_baseline_indicators": heuristic_indicators,
                 "applied_rules": [],
-                "pre_state_calibration_level": level,
+                "pre_state_calibration_level": heuristic_level,
             }
-            return level, indicators, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic", provenance
+            return (
+                heuristic_level,
+                heuristic_indicators,
+                heuristic_confidence,
+                reasoning,
+                "heuristic",
+                "trace-heuristic-v1",
+                "heuristic",
+                provenance,
+            )
         adapter = _hosted_adapter(config)
         build_started_at = time.perf_counter()
         prompt = (
@@ -824,17 +943,25 @@ def classify_user_with_provider(
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError) as error:
             if _should_bypass_provider_fallback(config, error):
                 raise
-            level, indicators, confidence = classify_user_message(content)
             reasoning = "Hosted provider unavailable or invalid output; fell back to local heuristic."
             provenance = {
-                "raw_provider_level": level,
-                "raw_provider_indicators": indicators,
-                "raw_provider_confidence": confidence,
-                "lexical_baseline_level": level,
-                "lexical_baseline_indicators": indicators,
+                "raw_provider_level": heuristic_level,
+                "raw_provider_indicators": heuristic_indicators,
+                "raw_provider_confidence": heuristic_confidence,
+                "lexical_baseline_level": heuristic_level,
+                "lexical_baseline_indicators": heuristic_indicators,
                 "applied_rules": [],
-                "pre_state_calibration_level": level,
+                "pre_state_calibration_level": heuristic_level,
             }
-            return level, indicators, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic", provenance
+            return (
+                heuristic_level,
+                heuristic_indicators,
+                heuristic_confidence,
+                reasoning,
+                "heuristic",
+                "trace-heuristic-v1",
+                "heuristic",
+                provenance,
+            )
 
     raise ValueError(f"Unsupported provider: {config.provider}")

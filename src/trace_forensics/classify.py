@@ -281,9 +281,11 @@ def classify_case(
             record["classification_model"] = actual_model
             record["classification_adapter"] = actual_adapter
         record["state_summary"] = build_state_summary(classified + [record], window_size=window_size)
-        provider_history.append(actual_provider)
+        summary_provider = "heuristic" if actual_provider == "heuristic-fast-path" else actual_provider
+        summary_adapter = "heuristic" if actual_adapter == "heuristic" else actual_adapter
+        provider_history.append(summary_provider)
         model_history.append(actual_model)
-        adapter_history.append(actual_adapter)
+        adapter_history.append(summary_adapter)
         classified.append(record)
         message_processing_seconds += perf_counter() - message_started_at
         audit_started_at = perf_counter()
