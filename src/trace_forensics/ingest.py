@@ -318,6 +318,10 @@ def ingest_case(
 ) -> IngestResult:
     if not input_path.exists():
         raise FileNotFoundError("TEST_INGEST_001 failed: source file does not exist")
+    if input_path.is_dir():
+        raise ValueError(
+            f"Input path {input_path} is a directory. TRACE ingest currently expects a single transcript export file."
+        )
     parser = {
         "json": parse_json_records,
         "csv": parse_csv_records,

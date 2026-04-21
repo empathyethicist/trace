@@ -430,6 +430,20 @@ class TraceTests(unittest.TestCase):
             self.assertEqual(records[0]["content"], "Hello there")
             self.assertEqual(records[1]["speaker"], "user")
 
+    def test_ingest_rejects_directory_input_with_clear_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            export_dir = root / "vendor_export"
+            export_dir.mkdir(parents=True, exist_ok=True)
+            (export_dir / "messages_part1.json").write_text(
+                json.dumps({"messages": [{"speaker": "Assistant", "body": "hello"}]}),
+                encoding="utf-8",
+            )
+            with self.assertRaises(ValueError) as ctx:
+                ingest_case(export_dir, "DIR-CASE", "tester", "axiom", root / "cases")
+            self.assertIn("is a directory", str(ctx.exception))
+            self.assertIn("expects a single transcript export file", str(ctx.exception))
+
     def test_parse_malformed_formats_raise(self) -> None:
         invalid_axiom = PARSER_FIXTURE_ROOT / "invalid_axiom_missing_messages.json"
         invalid_ufed = PARSER_FIXTURE_ROOT / "invalid_ufed_empty.xml"
