@@ -963,6 +963,50 @@ commonName = supplied
         self.assertEqual(config.runtime_metrics["fast_path_skips"], 0)
         self.assertEqual(provenance["raw_provider_level"], 3)
 
+    def test_hosted_fast_path_skips_hopeless_nobody_cares_user_fetch(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model", api_key="token")
+        level, indicators, confidence, reasoning, provider, _, _, provenance = classify_user_with_provider(
+            "Nobody cares. I feel hopeless.",
+            "Current vulnerability level: Elevated; behavioral trend: relational_transgression.",
+            [{"id": 1, "speaker": "user", "content": "Nobody cares. I feel hopeless.", "timestamp": None}],
+            config,
+        )
+        self.assertEqual(level, 3)
+        self.assertEqual(set(indicators), {"hopeless", "nobody cares"})
+        self.assertEqual(provider, "heuristic-fast-path")
+        self.assertIn("fast-path", reasoning)
+        self.assertEqual(config.runtime_metrics["fast_path_skips"], 1)
+        self.assertEqual(config.runtime_metrics["provider_fetches"], 0)
+        self.assertEqual(provenance["raw_provider_level"], 3)
+
+    def test_hosted_fast_path_does_not_skip_alone_worthless_user_fetch(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model")
+        with patch.dict(
+            os.environ,
+            {"TRACE_HOSTED_API_KEY": "token", "TRACE_HOSTED_BASE_URL": "https://provider.example/v1/chat/completions"},
+            clear=False,
+        ), patch("trace_forensics.llm._fetch_or_replay_response") as fetch_mock:
+            fetch_mock.return_value = {
+                "choices": [
+                    {
+                        "message": {
+                            "content": '{"vulnerability_level": 3, "indicators_observed": ["alone", "worthless"], "reasoning": "mock", "confidence": 0.8}'
+                        }
+                    }
+                ]
+            }
+            level, indicators, confidence, reasoning, provider, _, _, provenance = classify_user_with_provider(
+                "I feel worthless and alone.",
+                "Current vulnerability level: Elevated; behavioral trend: relational_transgression.",
+                [{"id": 1, "speaker": "user", "content": "I feel worthless and alone.", "timestamp": None}],
+                config,
+            )
+        self.assertEqual(level, 3)
+        self.assertEqual(provider, "hosted")
+        self.assertEqual(fetch_mock.call_count, 1)
+        self.assertEqual(config.runtime_metrics["fast_path_skips"], 0)
+        self.assertEqual(provenance["raw_provider_level"], 3)
+
     def test_hosted_fast_path_does_not_skip_scared_anxious_user_fetch(self) -> None:
         config = LLMConfig(provider="hosted", model="hosted-model")
         with patch.dict(
