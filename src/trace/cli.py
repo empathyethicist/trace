@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from trace import __version__
 from trace.classify import classify_case
@@ -33,6 +35,51 @@ from trace.validation import (
 
 
 DEFAULT_ROOT = Path.cwd() / ".trace_data"
+
+
+def evaluate_config(provider: str, model: str | None = None) -> dict:
+    issues: list[str] = []
+    notes: list[str] = []
+    effective_model = model or os.environ.get("TRACE_HOSTED_MODEL") or "provider-default"
+    payload = {
+        "provider": provider,
+        "ready": True,
+        "issues": issues,
+        "notes": notes,
+        "effective_model": effective_model if provider in {"hosted", "live-hosted"} else None,
+    }
+    if provider == "heuristic":
+        notes.append("Deterministic local heuristic path is available without additional configuration.")
+        return payload
+    if provider == "mock":
+        notes.append("Mock provider path is available for local testing without external dependencies.")
+        return payload
+    if provider == "ollama":
+        endpoint = os.environ.get("TRACE_LOCAL_RUNTIME_BASE_URL", "http://localhost:11434/api/generate")
+        payload["local_runtime_base_url"] = endpoint
+        notes.append("Local runtime path expects an Ollama-compatible generate endpoint unless TRACE_LOCAL_RUNTIME_BASE_URL is overridden.")
+        return payload
+    if provider in {"hosted", "live-hosted"}:
+        api_key = os.environ.get("TRACE_HOSTED_API_KEY")
+        base_url = os.environ.get("TRACE_HOSTED_BASE_URL")
+        payload["hosted_base_url"] = base_url
+        if not api_key:
+            issues.append("TRACE_HOSTED_API_KEY is not set.")
+        if not base_url:
+            issues.append("TRACE_HOSTED_BASE_URL is not set.")
+        else:
+            parsed = urlparse(base_url)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                issues.append("TRACE_HOSTED_BASE_URL must be a valid http(s) URL.")
+            elif not parsed.path:
+                notes.append("TRACE_HOSTED_BASE_URL should target a chat-completions endpoint explicitly.")
+        notes.append("Hosted provider path expects an OpenAI-compatible chat-completions API contract.")
+        notes.append(f"Effective hosted model: {effective_model}")
+        payload["ready"] = not issues
+        return payload
+    payload["ready"] = False
+    issues.append(f"Unsupported provider: {provider}")
+    return payload
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -78,6 +125,10 @@ def build_parser() -> argparse.ArgumentParser:
     validate = sub.add_parser("validate")
     validate.add_argument("--reference", required=True)
     validate.add_argument("--root", default=str(DEFAULT_ROOT))
+
+    config_check = sub.add_parser("config-check")
+    config_check.add_argument("--provider", default="hosted", choices=["heuristic", "mock", "ollama", "hosted", "live-hosted"])
+    config_check.add_argument("--model")
 
     benchmark = sub.add_parser("benchmark")
     benchmark.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
@@ -207,6 +258,22 @@ def main() -> None:
         print(f"[VALIDATE] Vulnerability agreement: {result.vulnerability_agreement:.1f}%")
         print(f"[VALIDATE] Findings match: {result.findings_match}")
         print(f"[VALIDATE] Pass thresholds: {result.pass_thresholds}")
+        return
+
+    if args.command == "config-check":
+        result = evaluate_config(args.provider, args.model)
+        print(f"[CONFIG] Provider: {result['provider']}")
+        print(f"[CONFIG] Ready: {result['ready']}")
+        if result.get("effective_model"):
+            print(f"[CONFIG] Effective model: {result['effective_model']}")
+        if result.get("hosted_base_url"):
+            print(f"[CONFIG] Hosted base URL: {result['hosted_base_url']}")
+        if result.get("local_runtime_base_url"):
+            print(f"[CONFIG] Local runtime base URL: {result['local_runtime_base_url']}")
+        for note in result["notes"]:
+            print(f"[CONFIG] Note: {note}")
+        for issue in result["issues"]:
+            print(f"[CONFIG] Issue: {issue}")
         return
 
     if args.command == "benchmark":

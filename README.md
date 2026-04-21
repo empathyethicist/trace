@@ -13,6 +13,7 @@ The project is being built as a serious forensic workflow candidate rather than 
 - Adoption posture: `docs/ADOPTION_READINESS.md`
 - Pilot plan: `docs/PILOT_EVALUATION.md`
 - Lab operations: `docs/LAB_DEPLOYMENT_NOTES.md`
+- Hosted provider setup: `docs/HOSTED_PROVIDER_SETUP.md`
 - Live-provider hardening: `docs/LIVE_PROVIDER_HARDENING.md`
 
 ## Status
@@ -122,6 +123,8 @@ pip install -e .
 
 ```bash
 trace version
+trace config-check --provider heuristic
+trace config-check --provider hosted
 ```
 
 ### Run validation
@@ -180,6 +183,23 @@ trace classify --case-id CASE-001 --provider hosted --model provider-default
 trace classify --case-id CASE-001 --provider hosted --model provider-default --replay-dir ./replay_artifacts --replay-mode record
 trace classify --case-id CASE-001 --provider hosted --model provider-default --replay-dir ./replay_artifacts --replay-mode replay-only
 trace classify --case-id CASE-001 --manual
+```
+
+### Hosted-provider setup
+
+TRACE’s hosted integration surface is:
+
+- `TRACE_HOSTED_API_KEY`
+- `TRACE_HOSTED_BASE_URL`
+- `TRACE_HOSTED_MODEL` (optional)
+
+TRACE currently expects an OpenAI-compatible chat-completions endpoint for hosted execution.
+
+Minimal setup:
+
+```bash
+cp .env.example .env
+trace config-check --provider hosted
 ```
 
 ### Inter-rater reliability
@@ -268,6 +288,7 @@ The repository also includes replay-hardened live-provider example artifacts und
 - Hosted-model execution may require API credentials and network access.
 - Hosted-provider testing is supported, but hosted providers may return schema-drifting output; TRACE normalizes common deviations and falls back safely when needed.
 - The `live-hosted` benchmark profile requires `TRACE_HOSTED_API_KEY` and `TRACE_HOSTED_BASE_URL`, and defaults to `provider-default` unless `TRACE_HOSTED_MODEL` is set.
+- Hosted execution currently assumes an OpenAI-compatible chat-completions endpoint. See `docs/HOSTED_PROVIDER_SETUP.md`.
 - Hosted replay harness support is available through `trace classify --replay-dir ... --replay-mode record|replay-only` so provider outputs can be captured once and replayed locally.
 
 ## License

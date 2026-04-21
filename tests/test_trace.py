@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from trace.classify import classify_case
 from trace.classify import calibrate_user_vulnerability_from_state
+from trace.cli import evaluate_config
 from trace.ingest import (
     ingest_case,
     parse_axiom_json_records,
@@ -94,6 +95,34 @@ class TraceTests(unittest.TestCase):
             records = parse_text_records(path)
             self.assertEqual(len(records), 2)
             self.assertEqual(records[0]["speaker"], "user")
+
+    def test_config_check_hosted_requires_env(self) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            result = evaluate_config("hosted")
+        self.assertFalse(result["ready"])
+        self.assertIn("TRACE_HOSTED_API_KEY is not set.", result["issues"])
+        self.assertIn("TRACE_HOSTED_BASE_URL is not set.", result["issues"])
+
+    def test_config_check_hosted_ready_with_openai_compatible_endpoint(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {
+                "TRACE_HOSTED_API_KEY": "test-key",
+                "TRACE_HOSTED_BASE_URL": "https://provider.example/v1/chat/completions",
+                "TRACE_HOSTED_MODEL": "provider-default",
+            },
+            clear=True,
+        ):
+            result = evaluate_config("hosted")
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["hosted_base_url"], "https://provider.example/v1/chat/completions")
+        self.assertEqual(result["effective_model"], "provider-default")
+
+    def test_config_check_local_runtime_defaults(self) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            result = evaluate_config("ollama")
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["local_runtime_base_url"], "http://localhost:11434/api/generate")
 
     def test_parse_additional_formats(self) -> None:
         court = PARSER_FIXTURE_ROOT / "court_transcript.txt"

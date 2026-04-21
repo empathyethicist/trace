@@ -85,6 +85,15 @@ If a lab enables hosted-provider use:
 - do not include secrets in evidence packages
 - record exact provider and model metadata in benchmark or package outputs
 - capture replay artifacts whenever the hosted path is used for evaluation or review
+- run `trace config-check --provider hosted` before first hosted use
+
+TRACE’s current hosted interface expects:
+
+- `TRACE_HOSTED_API_KEY`
+- `TRACE_HOSTED_BASE_URL`
+- `TRACE_HOSTED_MODEL` (optional)
+
+The hosted path currently assumes an OpenAI-compatible chat-completions endpoint. See `docs/HOSTED_PROVIDER_SETUP.md`.
 
 Current TRACE posture assumes:
 
