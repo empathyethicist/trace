@@ -86,7 +86,7 @@ From the classified transcript, TRACE computes:
 - pattern distribution
 - crisis failure rate
 
-It then exports an evidence package containing machine-readable artifacts, a Markdown report summary, a PDF report, verification metadata, and signing-ready manifests.
+It then exports an evidence package containing machine-readable artifacts, a Markdown report summary, a PDF report, verification metadata, signing-ready manifests, and calibration-summary artifacts that make hosted-provider adjustments inspectable.
 
 ## Repository layout
 
@@ -304,6 +304,8 @@ TRACE is designed around the following controls:
 The repository also includes a signed `live_hosted` benchmark example and a signed `heuristic` vs `live-hosted` comparison example so external reviewers can inspect real provider drift rather than only mock-hosted behavior. The current committed live-provider example records observed drift against the heuristic baseline instead of presenting a sanitized pass-only story.
 
 The repository also includes replay-hardened live-provider example artifacts under `examples/benchmark_artifacts/live_hosted_hardened/` and `examples/benchmark_comparison_live_hosted_hardened/` so reviewers can inspect the post-hardening bounded-drift state described in `docs/LIVE_PROVIDER_HARDENING.md`.
+
+The companion evidence package example under `examples/companion_incident_package/` is also committed in signed form and includes `calibration_summary.json`, `manifest.sig`, and `trust_metadata.json` so reviewers can inspect package-level calibration and signing outputs directly.
 
 ## Development notes
 

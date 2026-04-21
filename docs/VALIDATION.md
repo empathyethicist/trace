@@ -211,7 +211,15 @@ TRACE now includes a sample exported package at:
 
 - `examples/companion_incident_package/`
 
-This is intended to make package structure, manifest composition, and exported artifacts directly inspectable by reviewers.
+This is intended to make package structure, manifest composition, calibration-summary export, and exported artifacts directly inspectable by reviewers.
+
+The committed example package now includes:
+
+- `calibration_summary.json`
+- `manifest.sig`
+- `trust_metadata.json`
+
+This gives reviewers a signed package example that exposes both evidence-package integrity controls and calibration-summary output in the same artifact set.
 
 ## Validation standard for forensic credibility
 

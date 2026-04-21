@@ -1,0 +1,15 @@
+{
+  "signature_algorithm": "RSA-SHA256",
+  "signer_label": "TRACE example package signer",
+  "manifest_path": "manifest.json",
+  "signature_path": "manifest.sig",
+  "public_key_path": "example_signer_public.pem",
+  "public_key_sha256": "5905c2f03b17471b27defb4b7645c205815083da7f6dbc0872d60fd53271d4cb",
+  "signing_certificate_path": "example_signer_cert.pem",
+  "certificate_chain": [
+    {
+      "path": "example_chain.pem",
+      "sha256": "61c2dbc3c80b21ce224ecffc0fda7ea4b8255762ee30137e1823dc0254a0ff05"
+    }
+  ]
+}
