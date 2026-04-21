@@ -11,6 +11,7 @@ import subprocess
 from time import perf_counter
 
 from trace_forensics.classify import classify_case
+from trace_forensics.heuristics import classify_system_message, classify_user_message
 from trace_forensics.ingest import ingest_case
 from trace_forensics.report import compute_findings
 from trace_forensics.storage import read_json, utc_now_iso, write_json
@@ -27,6 +28,7 @@ class ValidationResult:
     pass_thresholds: bool
     elapsed_seconds: float
     tags: list[str] = field(default_factory=list)
+    message_outcomes: list[dict] = field(default_factory=list)
 
 
 PROVIDER_DRIFT_POLICY = {
@@ -131,15 +133,43 @@ def run_validation(
     behavior_match = 0
     vulnerability_total = 0
     vulnerability_match = 0
+    message_outcomes: list[dict] = []
+    prior_expected_vulnerability = 0
     for actual, target in zip(transcript, expected["transcript"], strict=True):
         if actual["speaker"] == "system":
             behavior_total += 1
-            if actual["classification"]["behavioral_category"] == target["behavioral_category"]:
+            matched_expected = actual["classification"]["behavioral_category"] == target["behavioral_category"]
+            if matched_expected:
                 behavior_match += 1
+            heuristic_category, heuristic_subcategory, _, _ = classify_system_message(actual["content"], prior_expected_vulnerability)
+            prior_bucket = "crisis" if prior_expected_vulnerability >= 3 else "elevated" if prior_expected_vulnerability >= 2 else "baseline"
+            message_outcomes.append(
+                {
+                    "message_id": actual["id"],
+                    "speaker": actual["speaker"],
+                    "shape_signature": f"system:{heuristic_category}/{heuristic_subcategory}:prior={prior_bucket}",
+                    "matched_expected": matched_expected,
+                    "actual_label": f"{actual['classification']['behavioral_category']}/{actual['classification'].get('behavioral_subcategory', '')}",
+                    "expected_label": f"{target['behavioral_category']}/{target.get('behavioral_subcategory', '')}",
+                }
+            )
         else:
             vulnerability_total += 1
-            if actual["classification"]["vulnerability_level"] == target["vulnerability_level"]:
+            matched_expected = actual["classification"]["vulnerability_level"] == target["vulnerability_level"]
+            if matched_expected:
                 vulnerability_match += 1
+            heuristic_level, heuristic_indicators, _ = classify_user_message(actual["content"])
+            message_outcomes.append(
+                {
+                    "message_id": actual["id"],
+                    "speaker": actual["speaker"],
+                    "shape_signature": f"user:heuristic_level={heuristic_level}:indicator_count={min(len(heuristic_indicators), 3)}",
+                    "matched_expected": matched_expected,
+                    "actual_label": str(actual["classification"]["vulnerability_level"]),
+                    "expected_label": str(target["vulnerability_level"]),
+                }
+            )
+            prior_expected_vulnerability = target["vulnerability_level"]
     findings = compute_findings(transcript)
     findings_match = (
         round(findings["inappropriate_response_rate"], 1) == round(expected["inappropriate_response_rate"], 1)
@@ -159,6 +189,7 @@ def run_validation(
         findings_match=findings_match,
         pass_thresholds=pass_thresholds,
         elapsed_seconds=elapsed_seconds,
+        message_outcomes=message_outcomes,
     )
 
 
@@ -212,6 +243,7 @@ def compare_benchmark_summaries(baseline: dict, candidate: dict) -> dict:
     candidate_results = {item["reference_name"]: item for item in candidate["results"]}
     references = sorted(set(baseline_results) & set(candidate_results))
     comparisons = []
+    shape_profiles: dict[tuple[str, str], dict] = {}
     drift_count = 0
     for reference_name in references:
         left = baseline_results[reference_name]
@@ -243,6 +275,64 @@ def compare_benchmark_summaries(baseline: dict, candidate: dict) -> dict:
                 "candidate_pass": right["pass_thresholds"],
             }
         )
+        for left_message, right_message in zip(left.get("message_outcomes", []), right.get("message_outcomes", []), strict=False):
+            if left_message.get("shape_signature") != right_message.get("shape_signature"):
+                continue
+            profile_key = (left_message["speaker"], left_message["shape_signature"])
+            profile = shape_profiles.setdefault(
+                profile_key,
+                {
+                    "speaker": left_message["speaker"],
+                    "shape_signature": left_message["shape_signature"],
+                    "count": 0,
+                    "baseline_match_count": 0,
+                    "candidate_match_count": 0,
+                    "both_match_count": 0,
+                    "baseline_only_match_count": 0,
+                    "candidate_only_match_count": 0,
+                    "both_fail_count": 0,
+                    "references": set(),
+                },
+            )
+            profile["count"] += 1
+            profile["references"].add(reference_name)
+            baseline_match = bool(left_message.get("matched_expected"))
+            candidate_match = bool(right_message.get("matched_expected"))
+            if baseline_match:
+                profile["baseline_match_count"] += 1
+            if candidate_match:
+                profile["candidate_match_count"] += 1
+            if baseline_match and candidate_match:
+                profile["both_match_count"] += 1
+            elif baseline_match:
+                profile["baseline_only_match_count"] += 1
+            elif candidate_match:
+                profile["candidate_only_match_count"] += 1
+            else:
+                profile["both_fail_count"] += 1
+
+    message_shape_profiles = []
+    safe_bypass_candidates = []
+    for profile in shape_profiles.values():
+        count = profile["count"]
+        normalized = {
+            "speaker": profile["speaker"],
+            "shape_signature": profile["shape_signature"],
+            "count": count,
+            "reference_count": len(profile["references"]),
+            "baseline_match_rate": round(profile["baseline_match_count"] / count * 100, 4),
+            "candidate_match_rate": round(profile["candidate_match_count"] / count * 100, 4),
+            "both_match_rate": round(profile["both_match_count"] / count * 100, 4),
+            "baseline_only_match_count": profile["baseline_only_match_count"],
+            "candidate_only_match_count": profile["candidate_only_match_count"],
+            "both_fail_count": profile["both_fail_count"],
+        }
+        message_shape_profiles.append(normalized)
+        if normalized["baseline_match_rate"] == 100.0 and normalized["candidate_match_rate"] == 100.0 and normalized["count"] >= 2:
+            safe_bypass_candidates.append(normalized)
+
+    message_shape_profiles.sort(key=lambda item: (-item["both_match_rate"], -item["count"], item["shape_signature"]))
+    safe_bypass_candidates.sort(key=lambda item: (-item["count"], item["shape_signature"]))
     return {
         "baseline_profile": baseline["profile"],
         "baseline_profile_settings": baseline.get("profile_settings", {}),
@@ -252,6 +342,8 @@ def compare_benchmark_summaries(baseline: dict, candidate: dict) -> dict:
         "drift_count": drift_count,
         "drift_free": drift_count == 0,
         "comparisons": comparisons,
+        "message_shape_profiles": message_shape_profiles,
+        "safe_bypass_candidates": safe_bypass_candidates,
     }
 
 
@@ -388,6 +480,33 @@ def render_comparison_markdown(comparison: dict) -> str:
             f"`{item['behavioral_delta']}` | `{item['vulnerability_delta']}` | "
             f"`{item['findings_changed']}` | `{item['threshold_changed']}` | `{item['drift_detected']}` |\n"
         )
+    profiles = comparison.get("message_shape_profiles", [])
+    if profiles:
+        lines.extend(
+            [
+                "\n## Message Shape Agreement Profiles\n\n",
+                "| Speaker | Shape | Count | Baseline Match | Candidate Match | Both Match |\n",
+                "|---|---|---:|---:|---:|---:|\n",
+            ]
+        )
+        for profile in profiles[:10]:
+            lines.append(
+                f"| `{profile['speaker']}` | `{profile['shape_signature']}` | `{profile['count']}` | "
+                f"`{profile['baseline_match_rate']}%` | `{profile['candidate_match_rate']}%` | `{profile['both_match_rate']}%` |\n"
+            )
+    bypass_candidates = comparison.get("safe_bypass_candidates", [])
+    if bypass_candidates:
+        lines.extend(
+            [
+                "\n## Safe Bypass Candidates\n\n",
+                "| Speaker | Shape | Count | References |\n",
+                "|---|---|---:|---:|\n",
+            ]
+        )
+        for profile in bypass_candidates[:10]:
+            lines.append(
+                f"| `{profile['speaker']}` | `{profile['shape_signature']}` | `{profile['count']}` | `{profile['reference_count']}` |\n"
+            )
     if policy and policy.get("policy_applied"):
         lines.extend(
             [

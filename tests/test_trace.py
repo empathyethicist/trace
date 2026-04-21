@@ -1339,11 +1339,15 @@ commonName = supplied
             comparison = apply_comparison_assessments(compare_benchmark_summaries(baseline, candidate))
             self.assertTrue(comparison["drift_free"])
             self.assertEqual(comparison["candidate_profile_settings"]["adapter"], "mock")
+            self.assertTrue(comparison["message_shape_profiles"])
+            self.assertTrue(comparison["safe_bypass_candidates"])
             artifacts = write_comparison_artifacts(comparison, root / "compare_artifacts")
             self.assertTrue(artifacts["json"].exists())
             self.assertTrue(artifacts["markdown"].exists())
             markdown = artifacts["markdown"].read_text(encoding="utf-8")
             self.assertIn("# TRACE Benchmark Comparison", markdown)
+            self.assertIn("## Message Shape Agreement Profiles", markdown)
+            self.assertIn("## Safe Bypass Candidates", markdown)
 
     def test_comparison_history_trend_summary(self) -> None:
         prefix = "benchmark_compare_heuristic_vs_mock-hosted_latest"
