@@ -89,6 +89,26 @@ def evaluate_config(provider: str, model: str | None = None) -> dict:
     return payload
 
 
+def apply_runtime_provider_overrides(args: argparse.Namespace) -> None:
+    override_map = {
+        "hosted_api_key": "TRACE_HOSTED_API_KEY",
+        "hosted_base_url": "TRACE_HOSTED_BASE_URL",
+        "hosted_model": "TRACE_HOSTED_MODEL",
+        "hosted_adapter": "TRACE_HOSTED_ADAPTER",
+    }
+    for attr, env_name in override_map.items():
+        value = getattr(args, attr, None)
+        if value:
+            os.environ[env_name] = value
+
+
+def add_hosted_override_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--hosted-api-key")
+    parser.add_argument("--hosted-base-url")
+    parser.add_argument("--hosted-model")
+    parser.add_argument("--hosted-adapter", choices=["openai-compatible", "anthropic-messages"])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="trace")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -112,6 +132,7 @@ def build_parser() -> argparse.ArgumentParser:
     classify.add_argument("--review-mode", default="auto", choices=["auto", "flag-low-confidence", "interactive"])
     classify.add_argument("--replay-dir")
     classify.add_argument("--replay-mode", default="off", choices=["off", "record", "record-and-replay", "replay-only"])
+    add_hosted_override_args(classify)
 
     irr_import = sub.add_parser("irr-import")
     irr_import.add_argument("--case-id", required=True)
@@ -136,6 +157,7 @@ def build_parser() -> argparse.ArgumentParser:
     config_check = sub.add_parser("config-check")
     config_check.add_argument("--provider", default="hosted", choices=["heuristic", "mock", "ollama", "hosted", "live-hosted"])
     config_check.add_argument("--model")
+    add_hosted_override_args(config_check)
 
     benchmark = sub.add_parser("benchmark")
     benchmark.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
@@ -150,6 +172,7 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark.add_argument("--certificate-chain", action="append", default=[])
     benchmark.add_argument("--replay-dir")
     benchmark.add_argument("--replay-mode", default="off", choices=["off", "record", "record-and-replay", "replay-only"])
+    add_hosted_override_args(benchmark)
 
     compare = sub.add_parser("benchmark-compare")
     compare.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
@@ -165,6 +188,7 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--certificate-chain", action="append", default=[])
     compare.add_argument("--replay-dir")
     compare.add_argument("--replay-mode", default="off", choices=["off", "record", "record-and-replay", "replay-only"])
+    add_hosted_override_args(compare)
 
     benchmark_replay = sub.add_parser("benchmark-replay")
     benchmark_replay.add_argument("--validation-dir", default=str(Path.cwd() / "validation"))
@@ -178,6 +202,7 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_replay.add_argument("--signer-label", default="TRACE benchmark signer")
     benchmark_replay.add_argument("--signing-certificate")
     benchmark_replay.add_argument("--certificate-chain", action="append", default=[])
+    add_hosted_override_args(benchmark_replay)
 
     verify = sub.add_parser("verify-package")
     verify.add_argument("--package", required=True)
@@ -220,9 +245,12 @@ def main() -> None:
         return
 
     if args.command == "classify":
+        apply_runtime_provider_overrides(args)
         model = args.model
-        if not args.manual and args.provider == "hosted" and model == "trace-heuristic-v1":
-            model = "provider-default"
+        if not args.manual and args.provider == "hosted":
+            model = args.hosted_model or model
+            if model == "trace-heuristic-v1":
+                model = "provider-default"
         result = classify_case(
             Path(args.root) / "cases" / args.case_id,
             args.examiner,
@@ -268,7 +296,8 @@ def main() -> None:
         return
 
     if args.command == "config-check":
-        result = evaluate_config(args.provider, args.model)
+        apply_runtime_provider_overrides(args)
+        result = evaluate_config(args.provider, args.hosted_model or args.model)
         print(f"[CONFIG] Provider: {result['provider']}")
         print(f"[CONFIG] Ready: {result['ready']}")
         if result.get("effective_model"):
@@ -284,6 +313,7 @@ def main() -> None:
         return
 
     if args.command == "benchmark":
+        apply_runtime_provider_overrides(args)
         benchmark_profile_settings(args.profile)
         summary = run_benchmark_suite(
             Path(args.validation_dir),
@@ -340,6 +370,7 @@ def main() -> None:
         return
 
     if args.command == "benchmark-replay":
+        apply_runtime_provider_overrides(args)
         benchmark_profile_settings(args.profile)
         summary = run_benchmark_suite(
             Path(args.validation_dir),
@@ -391,6 +422,7 @@ def main() -> None:
         return
 
     if args.command == "benchmark-compare":
+        apply_runtime_provider_overrides(args)
         benchmark_profile_settings(args.baseline_profile)
         benchmark_profile_settings(args.candidate_profile)
         baseline = run_benchmark_suite(

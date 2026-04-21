@@ -13,6 +13,8 @@ TRACE uses these environment variables for hosted execution:
 
 The recommended starting point is the repo-root `.env.example`.
 
+The adapter registry and extension rules are documented in `docs/ADAPTER_REGISTRY.md`.
+
 ## Expected API contract
 
 TRACE currently supports these hosted adapters:
@@ -60,6 +62,7 @@ Then verify the configuration:
 
 ```bash
 trace config-check --provider hosted
+trace config-check --provider hosted --hosted-adapter anthropic-messages --hosted-base-url https://provider.example/v1/messages
 ```
 
 ## Minimal hosted classification run
@@ -69,6 +72,13 @@ trace classify \
   --case-id CASE-001 \
   --provider hosted \
   --model provider-default
+
+trace classify \
+  --case-id CASE-001 \
+  --provider hosted \
+  --hosted-adapter anthropic-messages \
+  --hosted-base-url https://provider.example/v1/messages \
+  --hosted-model provider-default
 ```
 
 ## Replay-first hosted evaluation

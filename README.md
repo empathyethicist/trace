@@ -14,6 +14,7 @@ The project is being built as a serious forensic workflow candidate rather than 
 - Pilot plan: `docs/PILOT_EVALUATION.md`
 - Lab operations: `docs/LAB_DEPLOYMENT_NOTES.md`
 - Hosted provider setup: `docs/HOSTED_PROVIDER_SETUP.md`
+- Adapter registry: `docs/ADAPTER_REGISTRY.md`
 - Live-provider hardening: `docs/LIVE_PROVIDER_HARDENING.md`
 
 ## Status
@@ -204,6 +205,7 @@ Minimal setup:
 ```bash
 cp .env.example .env
 trace config-check --provider hosted
+trace config-check --provider hosted --hosted-adapter anthropic-messages --hosted-base-url https://provider.example/v1/messages
 ```
 
 ### Inter-rater reliability

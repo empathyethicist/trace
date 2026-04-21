@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,7 +9,7 @@ from unittest.mock import patch
 
 from trace.classify import classify_case
 from trace.classify import calibrate_user_vulnerability_from_state
-from trace.cli import evaluate_config
+from trace.cli import apply_runtime_provider_overrides, evaluate_config
 from trace.ingest import (
     ingest_case,
     parse_axiom_json_records,
@@ -154,6 +155,20 @@ class TraceTests(unittest.TestCase):
             result = evaluate_config("ollama")
         self.assertTrue(result["ready"])
         self.assertEqual(result["local_runtime_base_url"], "http://localhost:11434/api/generate")
+
+    def test_runtime_provider_overrides_apply(self) -> None:
+        class Args:
+            hosted_api_key = "override-key"
+            hosted_base_url = "https://provider.example/v1/messages"
+            hosted_model = "override-model"
+            hosted_adapter = "anthropic-messages"
+
+        with patch.dict("os.environ", {}, clear=True):
+            apply_runtime_provider_overrides(Args())
+            self.assertEqual(os.environ["TRACE_HOSTED_API_KEY"], "override-key")
+            self.assertEqual(os.environ["TRACE_HOSTED_BASE_URL"], "https://provider.example/v1/messages")
+            self.assertEqual(os.environ["TRACE_HOSTED_MODEL"], "override-model")
+            self.assertEqual(os.environ["TRACE_HOSTED_ADAPTER"], "anthropic-messages")
 
     def test_hosted_adapter_payloads(self) -> None:
         openai_payload = _build_hosted_request_payload(
