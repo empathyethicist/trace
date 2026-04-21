@@ -12,6 +12,7 @@ from trace_forensics.classify import classify_case
 from trace_forensics.classify import calibrate_user_vulnerability_from_state
 from trace_forensics.cli import apply_runtime_provider_overrides, evaluate_config, init_workspace, main
 from trace_forensics.ingest import (
+    extract_text_like,
     ingest_case,
     parse_json_records,
     parse_axiom_json_records,
@@ -116,6 +117,11 @@ class TraceTests(unittest.TestCase):
             records = parse_json_records(path)
             self.assertEqual(records[0]["speaker"], "user")
             self.assertEqual(records[1]["speaker"], "system")
+
+    def test_extract_text_like_handles_nested_structures(self) -> None:
+        self.assertEqual(extract_text_like({"text": "hello"}), "hello")
+        self.assertEqual(extract_text_like({"body": {"text": "hello there"}}), "hello there")
+        self.assertEqual(extract_text_like([{"text": "hello"}, {"text": "world"}]), "hello world")
 
     def test_csv_ingest_normalizes_speakers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -296,6 +302,43 @@ class TraceTests(unittest.TestCase):
         self.assertEqual(parse_court_transcript_records(court)[1]["speaker"], "system")
         self.assertEqual(parse_axiom_json_records(axiom)[2]["speaker"], "user")
         self.assertEqual(parse_ufed_xml_records(ufed)[3]["speaker"], "system")
+
+    def test_parse_axiom_nested_body_extracts_text(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "axiom_nested.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "messages": [
+                            {"author": "Assistant", "body": {"text": "hello"}, "created_at": "2026-01-01T00:00:00Z"},
+                            {"sender": "Human", "message": "hi", "time": "2026-01-01T00:00:01Z"},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            records = parse_axiom_json_records(path)
+            self.assertEqual(records[0]["speaker"], "system")
+            self.assertEqual(records[0]["content"], "hello")
+            self.assertEqual(records[1]["speaker"], "user")
+
+    def test_parse_ufed_nested_body_extracts_text(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ufed_nested.xml"
+            path.write_text(
+                (
+                    "<root>"
+                    "<message><sender>Assistant</sender><time>2026-01-01T00:00:00Z</time><body><text>Hello there</text></body></message>"
+                    "<message><author>Human</author><timestamp>2026-01-01T00:00:01Z</timestamp><message>I need help</message></message>"
+                    "</root>"
+                ),
+                encoding="utf-8",
+            )
+            records = parse_ufed_xml_records(path)
+            self.assertEqual(len(records), 2)
+            self.assertEqual(records[0]["speaker"], "system")
+            self.assertEqual(records[0]["content"], "Hello there")
+            self.assertEqual(records[1]["speaker"], "user")
 
     def test_parse_malformed_formats_raise(self) -> None:
         invalid_axiom = PARSER_FIXTURE_ROOT / "invalid_axiom_missing_messages.json"
@@ -613,6 +656,44 @@ commonName = supplied
                     replay_mode="replay-only",
                 )
             self.assertIn("contains malformed JSON on line 1", str(ctx.exception))
+
+    def test_replay_only_uses_latest_matching_record_for_duplicate_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            replay_dir = root / "replay"
+            replay_dir.mkdir(parents=True, exist_ok=True)
+            ingest_case(FIXTURE, "CASE-REPLAY-DUP", "tester", "json", root / "cases")
+            classify_case(
+                root / "cases" / "CASE-REPLAY-DUP",
+                "tester",
+                provider="mock",
+                model="mock-model",
+                replay_dir=replay_dir,
+                replay_mode="record",
+            )
+            replay_log = replay_dir / "provider_replay.jsonl"
+            records = [json.loads(line) for line in replay_log.read_text(encoding="utf-8").splitlines() if line.strip()]
+            records[0]["raw_response"] = {
+                "vulnerability_level": 0,
+                "indicators_observed": [],
+                "confidence": 0.1,
+                "reasoning": "latest duplicate record",
+            }
+            with replay_log.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(records[0]) + "\n")
+
+            ingest_case(FIXTURE, "CASE-REPLAY-DUP-2", "tester", "json", root / "cases")
+            classify_case(
+                root / "cases" / "CASE-REPLAY-DUP-2",
+                "tester",
+                provider="mock",
+                model="mock-model",
+                replay_dir=replay_dir,
+                replay_mode="replay-only",
+            )
+            classified = read_json(root / "cases" / "CASE-REPLAY-DUP-2" / "classified_transcript.json")
+            first_user = next(message for message in classified["transcript"] if message["speaker"] == "user")
+            self.assertIn("latest duplicate record", first_user["classification"]["reasoning"])
 
     def test_user_vulnerability_calibration_raises_crisis_underclassification(self) -> None:
         level, indicators, confidence, reasoning, provenance = _calibrate_user_vulnerability(

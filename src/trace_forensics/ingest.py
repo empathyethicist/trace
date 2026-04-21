@@ -30,6 +30,27 @@ class IngestResult:
     transcript_count: int
 
 
+def extract_text_like(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        for key in ("text", "content", "body", "message", "value"):
+            extracted = extract_text_like(value.get(key))
+            if extracted:
+                return extracted
+        for nested in value.values():
+            extracted = extract_text_like(nested)
+            if extracted:
+                return extracted
+        return ""
+    if isinstance(value, list):
+        parts = [extract_text_like(item) for item in value]
+        return " ".join(part for part in parts if part).strip()
+    return str(value).strip()
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -145,7 +166,12 @@ def parse_axiom_json_records(path: Path) -> list[dict]:
         raise ValueError("AXIOM JSON parser could not find a transcript-like message array")
     rows = []
     for item in candidates:
-        content = item.get("content") or item.get("message") or item.get("body") or ""
+        content = (
+            extract_text_like(item.get("content"))
+            or extract_text_like(item.get("message"))
+            or extract_text_like(item.get("body"))
+            or ""
+        )
         speaker = item.get("speaker") or item.get("author") or item.get("sender") or ""
         timestamp = item.get("timestamp") or item.get("time") or item.get("created_at")
         rows.append(
@@ -175,7 +201,11 @@ def parse_ufed_xml_records(path: Path) -> list[dict]:
         if content is None:
             content = ""
         if not speaker or not str(content).strip():
-            children = {child.tag.lower().split("}")[-1]: (child.text or "").strip() for child in list(node)}
+            children = {child.tag.lower().split("}")[-1]: extract_text_like(child.text or "") for child in list(node)}
+            for child in list(node):
+                child_key = child.tag.lower().split("}")[-1]
+                if not children.get(child_key):
+                    children[child_key] = extract_text_like({grand.tag.lower().split("}")[-1]: (grand.text or "").strip() for grand in list(child)})
             speaker = speaker or children.get("speaker") or children.get("author") or children.get("sender")
             timestamp = timestamp or children.get("timestamp") or children.get("time")
             content = (str(content).strip() if content is not None else "") or children.get("content") or children.get("body") or children.get("message") or ""
