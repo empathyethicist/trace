@@ -145,8 +145,8 @@ Recommended activities:
 Recommended commands:
 
 ```bash
-trace classify --case-id CASE-001 --provider openrouter --model openrouter/free --replay-dir ./replay_artifacts --replay-mode record
-trace classify --case-id CASE-001 --provider openrouter --model openrouter/free --replay-dir ./replay_artifacts --replay-mode replay-only
+trace classify --case-id CASE-001 --provider hosted --model provider-default --replay-dir ./replay_artifacts --replay-mode record
+trace classify --case-id CASE-001 --provider hosted --model provider-default --replay-dir ./replay_artifacts --replay-mode replay-only
 trace benchmark-replay --validation-dir ./validation --profile live-hosted --replay-dir ./replay_artifacts --output-dir ./benchmark_artifacts_replay
 ```
 

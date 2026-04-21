@@ -143,7 +143,7 @@ The companion comparison workflow can emit:
 
 This supports explicit drift review between heuristic and hosted benchmark profiles.
 
-When provider credentials are available, the same workflow can be run with `--profile live-hosted` to benchmark against a real hosted provider. TRACE requires `OPENROUTER_API_KEY` for this path and defaults to `openrouter/free` unless `TRACE_BENCHMARK_OPENROUTER_MODEL` is set.
+When provider credentials are available, the same workflow can be run with `--profile live-hosted` to benchmark against a real hosted provider. TRACE requires `TRACE_HOSTED_API_KEY` and `TRACE_HOSTED_BASE_URL` for this path and defaults to `provider-default` unless `TRACE_HOSTED_MODEL` is set.
 
 The benchmark workflow can also emit history snapshots such as:
 
@@ -166,7 +166,7 @@ These summarize pass-rate, failure-count, timing, or drift movement across the r
 
 When run with provider credentials, TRACE can also emit a `live-hosted` benchmark artifact set and a `heuristic` vs `live-hosted` comparison artifact set. Those outputs should be interpreted as provider-drift evidence unless and until the project defines stable live-provider acceptance criteria.
 
-The currently committed `live_hosted` example artifacts document a real `openrouter/free` run that did not match the deterministic baseline on all fixtures. TRACE preserves that result as evidence of current hosted-provider variance.
+The currently committed `live_hosted` example artifacts document a real `provider-default` run that did not match the deterministic baseline on all fixtures. TRACE preserves that result as evidence of current hosted-provider variance.
 
 TRACE can also benchmark from recorded provider outputs instead of a live provider session:
 

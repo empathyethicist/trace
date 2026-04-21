@@ -6,7 +6,7 @@ This document records the live-provider hardening work performed against TRACE's
 
 As of April 19, 2026, TRACE has been hardened against the main failure mode observed in live-provider benchmarking: instability in hosted user-vulnerability classification under crisis-sensitive conversational conditions.
 
-This hardening work was performed against the `openrouter/free` routing path and evaluated through TRACE's replay-based benchmark workflow rather than by repeatedly calling a live provider for every iteration.
+This hardening work was performed against the `provider-default` routing path and evaluated through TRACE's replay-based benchmark workflow rather than by repeatedly calling a live provider for every iteration.
 
 ## Why replay-first analysis was required
 

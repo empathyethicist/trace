@@ -28,7 +28,7 @@ If a release includes live-provider benchmarking, also retain:
 
 - the live-hosted benchmark artifact bundle
 - the heuristic-vs-live-hosted comparison artifact bundle
-- the exact `TRACE_BENCHMARK_OPENROUTER_MODEL` value used during the run
+- the exact `TRACE_HOSTED_MODEL` value used during the run
 
 ## Recommended tag naming
 

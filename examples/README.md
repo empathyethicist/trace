@@ -43,7 +43,7 @@ The live-hosted comparison demonstrates:
 - signed artifact preservation for that drift evidence
 - the current need to treat live-provider benchmarking as an observational quality signal rather than a release-pass gate
 
-The current committed `live_hosted` example was produced against `openrouter/free` and shows non-zero drift relative to the heuristic baseline. That result is intentional to demonstrate how TRACE records live-provider divergence instead of hiding it.
+The current committed `live_hosted` example was produced against `provider-default` and shows non-zero drift relative to the heuristic baseline. That result is intentional to demonstrate how TRACE records live-provider divergence instead of hiding it.
 
 That divergence should be interpreted together with `docs/PROVIDER_DRIFT_POLICY.md`.
 

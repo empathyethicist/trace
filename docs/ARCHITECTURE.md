@@ -98,8 +98,8 @@ TRACE supports multiple classification paths:
 
 - deterministic heuristics
 - mock provider path for local testing
-- OpenRouter-backed hosted inference
-- local Ollama path (wired, subject to local runtime availability)
+- hosted-provider inference
+- local runtime path (wired, subject to local runtime availability)
 
 All provider outputs are treated as suggestions until recorded in the classified transcript with explicit decision state.
 

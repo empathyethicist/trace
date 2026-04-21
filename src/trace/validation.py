@@ -79,12 +79,12 @@ def benchmark_profile_settings(profile: str) -> dict:
     if profile == "hosted":
         return {"provider": "mock", "model": "benchmark-mock-model", "window_size": 8}
     if profile == "live-hosted":
-        api_key = os.environ.get("OPENROUTER_API_KEY")
+        api_key = os.environ.get("TRACE_HOSTED_API_KEY")
         if not api_key:
-            raise ValueError("OPENROUTER_API_KEY is required for the live-hosted benchmark profile")
+            raise ValueError("TRACE_HOSTED_API_KEY is required for the live-hosted benchmark profile")
         return {
-            "provider": "openrouter",
-            "model": os.environ.get("TRACE_BENCHMARK_OPENROUTER_MODEL", "openrouter/free"),
+            "provider": "hosted",
+            "model": os.environ.get("TRACE_HOSTED_MODEL", "provider-default"),
             "window_size": 8,
         }
     raise ValueError(f"Unsupported benchmark profile: {profile}")

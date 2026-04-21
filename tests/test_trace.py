@@ -403,12 +403,12 @@ commonName = supplied
                 benchmark_profile_settings("live-hosted")
         with patch.dict(
             "os.environ",
-            {"OPENROUTER_API_KEY": "test-key", "TRACE_BENCHMARK_OPENROUTER_MODEL": "google/gemma-4-26b-a4b-it:free"},
+            {"TRACE_HOSTED_API_KEY": "test-key", "TRACE_HOSTED_MODEL": "provider-default"},
             clear=True,
         ):
             settings = benchmark_profile_settings("live-hosted")
-        self.assertEqual(settings["provider"], "openrouter")
-        self.assertEqual(settings["model"], "google/gemma-4-26b-a4b-it:free")
+        self.assertEqual(settings["provider"], "hosted")
+        self.assertEqual(settings["model"], "provider-default")
         self.assertEqual(settings["window_size"], 8)
 
     def test_benchmark_artifact_export(self) -> None:
@@ -519,7 +519,7 @@ commonName = supplied
                 "baseline_profile": "heuristic",
                 "baseline_profile_settings": {},
                 "candidate_profile": "live-hosted",
-                "candidate_profile_settings": {"provider": "openrouter", "model": "openrouter/free", "window_size": 8},
+                "candidate_profile_settings": {"provider": "hosted", "model": "provider-default", "window_size": 8},
                 "references_compared": 2,
                 "drift_count": 2,
                 "drift_free": False,

@@ -75,8 +75,8 @@
         ],
         "baseline_profile_settings": {},
         "candidate_profile_settings": {
-          "provider": "openrouter",
-          "model": "openrouter/free",
+          "provider": "hosted",
+          "model": "provider-default",
           "window_size": 8
         }
       }
@@ -89,8 +89,8 @@
         "baseline_profile_settings": {},
         "candidate_profile": "live-hosted",
         "candidate_profile_settings": {
-          "provider": "openrouter",
-          "model": "openrouter/free",
+          "provider": "hosted",
+          "model": "provider-default",
           "window_size": 8
         },
         "references_compared": 5,
@@ -242,8 +242,8 @@
         "baseline_profile_settings": {},
         "candidate_profile": "live-hosted",
         "candidate_profile_settings": {
-          "provider": "openrouter",
-          "model": "openrouter/free",
+          "provider": "hosted",
+          "model": "provider-default",
           "window_size": 8
         },
         "references_compared": 5,
@@ -415,8 +415,8 @@
         "baseline_profile_settings": {},
         "candidate_profile": "live-hosted",
         "candidate_profile_settings": {
-          "provider": "openrouter",
-          "model": "openrouter/free",
+          "provider": "hosted",
+          "model": "provider-default",
           "window_size": 8
         },
         "references_compared": 5,

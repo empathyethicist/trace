@@ -67,7 +67,7 @@ When a critical or crisis-tagged reference shows negative vulnerability drift be
 
 ## What the latest live run showed
 
-The latest committed `openrouter/free` benchmark artifacts showed three concrete issues:
+The latest committed `provider-default` benchmark artifacts showed three concrete issues:
 
 - vulnerability agreement drift was materially worse than behavioral drift
 - crisis-oriented fixtures drifted more than benign fixtures

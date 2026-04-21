@@ -170,8 +170,15 @@ def _fetch_or_replay_response(
     return response
 
 
-def _openrouter_api_key(config: LLMConfig) -> str | None:
-    return config.api_key or os.environ.get("OPENROUTER_API_KEY")
+def _hosted_api_key(config: LLMConfig) -> str | None:
+    return config.api_key or os.environ.get("TRACE_HOSTED_API_KEY")
+
+
+def _hosted_base_url() -> str:
+    base_url = os.environ.get("TRACE_HOSTED_BASE_URL")
+    if not base_url:
+        raise ValueError("TRACE_HOSTED_BASE_URL is required for hosted provider execution")
+    return base_url
 
 
 def _extract_json_object(text: str) -> dict:
@@ -427,14 +434,14 @@ def classify_system_with_provider(
             )
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
             category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
-            reasoning = "Ollama unavailable or invalid output; fell back to local heuristic."
+            reasoning = "Local runtime unavailable or invalid output; fell back to local heuristic."
             return category, subcategory, role, confidence, reasoning
 
-    if config.provider == "openrouter":
-        api_key = _openrouter_api_key(config)
+    if config.provider == "hosted":
+        api_key = _hosted_api_key(config)
         if not api_key:
             category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
-            reasoning = "OpenRouter API key unavailable; fell back to local heuristic."
+            reasoning = "Hosted provider API key unavailable; fell back to local heuristic."
             return category, subcategory, role, confidence, reasoning
         prompt = (
             "You are a forensic classification assistant. "
@@ -459,11 +466,11 @@ def classify_system_with_provider(
                 config,
                 key=key,
                 kind="system",
-                provider="openrouter",
+                provider="hosted",
                 model=config.model,
                 request_payload=request_payload,
                 fetcher=lambda: _json_request_with_headers(
-                    "https://openrouter.ai/api/v1/chat/completions",
+                    _hosted_base_url(),
                     request_payload,
                     {
                         "Content-Type": "application/json",
@@ -492,7 +499,7 @@ def classify_system_with_provider(
             )
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
             category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
-            reasoning = "OpenRouter unavailable or invalid output; fell back to local heuristic."
+            reasoning = "Hosted provider unavailable or invalid output; fell back to local heuristic."
             return category, subcategory, role, confidence, reasoning
 
     raise ValueError(f"Unsupported provider: {config.provider}")
@@ -580,14 +587,14 @@ def classify_user_with_provider(
             )
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
             level, indicators, confidence = classify_user_message(content)
-            reasoning = "Ollama unavailable or invalid output; fell back to local heuristic."
+            reasoning = "Local runtime unavailable or invalid output; fell back to local heuristic."
             return level, indicators, confidence, reasoning
 
-    if config.provider == "openrouter":
-        api_key = _openrouter_api_key(config)
+    if config.provider == "hosted":
+        api_key = _hosted_api_key(config)
         if not api_key:
             level, indicators, confidence = classify_user_message(content)
-            reasoning = "OpenRouter API key unavailable; fell back to local heuristic."
+            reasoning = "Hosted provider API key unavailable; fell back to local heuristic."
             return level, indicators, confidence, reasoning
         prompt = (
             "You are a forensic classification assistant. "
@@ -611,11 +618,11 @@ def classify_user_with_provider(
                 config,
                 key=key,
                 kind="user",
-                provider="openrouter",
+                provider="hosted",
                 model=config.model,
                 request_payload=request_payload,
                 fetcher=lambda: _json_request_with_headers(
-                    "https://openrouter.ai/api/v1/chat/completions",
+                    _hosted_base_url(),
                     request_payload,
                     {
                         "Content-Type": "application/json",
@@ -637,7 +644,7 @@ def classify_user_with_provider(
             )
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
             level, indicators, confidence = classify_user_message(content)
-            reasoning = "OpenRouter unavailable or invalid output; fell back to local heuristic."
+            reasoning = "Hosted provider unavailable or invalid output; fell back to local heuristic."
             return level, indicators, confidence, reasoning
 
     raise ValueError(f"Unsupported provider: {config.provider}")

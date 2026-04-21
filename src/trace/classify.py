@@ -153,7 +153,7 @@ def classify_case(
                 window_messages,
                 config,
             )
-            if provider in {"openrouter", "ollama"}:
+            if provider in {"hosted", "ollama"}:
                 level, confidence, reasoning = calibrate_user_vulnerability_from_state(
                     record["content"],
                     level,

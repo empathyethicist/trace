@@ -1,26 +1,26 @@
 {
-  "generated_at": "2026-04-19T15:34:46+00:00",
-  "signer_label": "TRACE live benchmark signer",
+  "generated_at": "2026-04-21T00:17:40+00:00",
+  "signer_label": "TRACE benchmark signer",
   "files": [
     {
       "path": "benchmark_comparison.json",
-      "sha256": "ffed49bd25046e5f62b4a83346aad938b599a3c9f4e411106b133e7f1ad742d2"
+      "sha256": "2d7edcdd0c7a8fc28be6da0b0691d0895f99b277a1ba59db63ed75ff9c9d6006"
     },
     {
       "path": "benchmark_comparison.md",
-      "sha256": "981bb2f15596a79b5231842c579120eeb01485008f43a29b4425f642568a986b"
+      "sha256": "9625ba4f17528295da22182927b5e1a6f665dfb3133ea89567eb988ec93a9056"
     },
     {
       "path": "live_cert.pem",
-      "sha256": "4cb033915b86a259217671b268cc0a85477c109bcd4a6d786b04ec72cd1f3f12"
+      "sha256": "4d95dc1f57bd7f068a387423f1a507a04e9337b345e60ae99ab5a182e61d3e8e"
     },
     {
       "path": "live_chain.pem",
-      "sha256": "cc5187b4d72845ca5c44199685c1235f8c3f698b4f1c7bff09f4fe06ec2d7fbf"
+      "sha256": "4d95dc1f57bd7f068a387423f1a507a04e9337b345e60ae99ab5a182e61d3e8e"
     },
     {
       "path": "live_public.pem",
-      "sha256": "4198d6c70db62fd829458c2f8e3489d8be655704460cb0aa22051203288aa3ad"
+      "sha256": "efbb47e32fb0897a555b9ff9ab3ea25f17ae5d4c98569e58f7343ea9e93484ec"
     }
   ]
 }

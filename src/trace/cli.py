@@ -51,7 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     classify.add_argument("--examiner", default="trace")
     classify.add_argument("--root", default=str(DEFAULT_ROOT))
     classify.add_argument("--manual", action="store_true")
-    classify.add_argument("--provider", default="heuristic", choices=["heuristic", "mock", "ollama", "openrouter", "none"])
+    classify.add_argument("--provider", default="heuristic", choices=["heuristic", "mock", "ollama", "hosted", "none"])
     classify.add_argument("--model", default="trace-heuristic-v1")
     classify.add_argument("--temperature", type=float, default=0.0)
     classify.add_argument("--window-size", type=int, default=20)
@@ -163,8 +163,8 @@ def main() -> None:
 
     if args.command == "classify":
         model = args.model
-        if not args.manual and args.provider == "openrouter" and model == "trace-heuristic-v1":
-            model = "openrouter/free"
+        if not args.manual and args.provider == "hosted" and model == "trace-heuristic-v1":
+            model = "provider-default"
         result = classify_case(
             Path(args.root) / "cases" / args.case_id,
             args.examiner,

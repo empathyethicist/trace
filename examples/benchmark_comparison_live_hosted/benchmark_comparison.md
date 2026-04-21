@@ -3,7 +3,7 @@
 - Baseline Profile: `heuristic`
 - Baseline Settings: `{}`
 - Candidate Profile: `live-hosted`
-- Candidate Settings: `{'provider': 'openrouter', 'model': 'openrouter/free', 'window_size': 8}`
+- Candidate Settings: `{'provider': 'hosted', 'model': 'provider-default', 'window_size': 8}`
 - References Compared: `5`
 - Drift Count: `3`
 - Drift Free: `False`

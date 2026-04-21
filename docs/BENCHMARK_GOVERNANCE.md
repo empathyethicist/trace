@@ -26,7 +26,7 @@ The `heuristic` profile is the baseline release profile because it is determinis
 
 The current `hosted` profile is a controlled mock-hosted benchmark path. It is useful for workflow comparison, timing instrumentation, and drift plumbing, but it is **not yet** a substitute for benchmarking against live provider responses.
 
-The `live-hosted` profile is the external-provider benchmark path. It is intended for pre-release validation against a real hosted model and requires `OPENROUTER_API_KEY`. Unless overridden, TRACE uses `openrouter/free`. Releases should record the exact hosted model identifier used for any live-provider benchmark artifact set.
+The `live-hosted` profile is the external-provider benchmark path. It is intended for pre-release validation against a real hosted model and requires `TRACE_HOSTED_API_KEY` and `TRACE_HOSTED_BASE_URL`. Unless overridden, TRACE uses `provider-default`. Releases should record the exact hosted model identifier used for any live-provider benchmark artifact set.
 
 At the current project stage, `live-hosted` should be treated as a provider-drift measurement workflow rather than a mandatory release gate. Its value is in exposing where externally hosted model behavior diverges from the deterministic baseline.
 

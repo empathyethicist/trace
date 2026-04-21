@@ -56,8 +56,8 @@
       }
     ],
     "profile_settings": {
-      "provider": "openrouter",
-      "model": "openrouter/free",
+      "provider": "hosted",
+      "model": "provider-default",
       "window_size": 8
     }
   }

@@ -68,7 +68,7 @@ Classification can run through:
 
 - deterministic local heuristics
 - mock hosted-model mode for testability
-- OpenRouter-backed hosted inference
+- hosted-provider inference
 - manual review pathways with accept / flag / override behavior
 - examiner override rationale capture in classified output
 
@@ -176,9 +176,9 @@ trace ingest --input ufed_messages.xml --format ufed --case-id CASE-004 --examin
 ```bash
 trace classify --case-id CASE-001 --provider heuristic
 trace classify --case-id CASE-001 --provider mock --model mock-model --window-size 4
-trace classify --case-id CASE-001 --provider openrouter --model openrouter/free
-trace classify --case-id CASE-001 --provider openrouter --model openrouter/free --replay-dir ./replay_artifacts --replay-mode record
-trace classify --case-id CASE-001 --provider openrouter --model openrouter/free --replay-dir ./replay_artifacts --replay-mode replay-only
+trace classify --case-id CASE-001 --provider hosted --model provider-default
+trace classify --case-id CASE-001 --provider hosted --model provider-default --replay-dir ./replay_artifacts --replay-mode record
+trace classify --case-id CASE-001 --provider hosted --model provider-default --replay-dir ./replay_artifacts --replay-mode replay-only
 trace classify --case-id CASE-001 --manual
 ```
 
@@ -266,8 +266,8 @@ The repository also includes replay-hardened live-provider example artifacts und
 
 - Python 3.11+ is recommended.
 - Hosted-model execution may require API credentials and network access.
-- Free-model OpenRouter testing is supported, but hosted providers may return schema-drifting output; TRACE normalizes common deviations and falls back safely when needed.
-- The `live-hosted` benchmark profile requires `OPENROUTER_API_KEY` and defaults to `openrouter/free` unless `TRACE_BENCHMARK_OPENROUTER_MODEL` is set.
+- Hosted-provider testing is supported, but hosted providers may return schema-drifting output; TRACE normalizes common deviations and falls back safely when needed.
+- The `live-hosted` benchmark profile requires `TRACE_HOSTED_API_KEY` and `TRACE_HOSTED_BASE_URL`, and defaults to `provider-default` unless `TRACE_HOSTED_MODEL` is set.
 - Hosted replay harness support is available through `trace classify --replay-dir ... --replay-mode record|replay-only` so provider outputs can be captured once and replayed locally.
 
 ## License

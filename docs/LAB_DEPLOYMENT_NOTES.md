@@ -108,15 +108,15 @@ Recommended usage:
 ```bash
 trace classify \
   --case-id CASE-001 \
-  --provider openrouter \
-  --model openrouter/free \
+  --provider hosted \
+  --model provider-default \
   --replay-dir ./replay_artifacts \
   --replay-mode record
 
 trace classify \
   --case-id CASE-001 \
-  --provider openrouter \
-  --model openrouter/free \
+  --provider hosted \
+  --model provider-default \
   --replay-dir ./replay_artifacts \
   --replay-mode replay-only
 ```
