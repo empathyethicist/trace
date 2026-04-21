@@ -369,6 +369,25 @@ class TraceTests(unittest.TestCase):
             self.assertEqual(trust_metadata["signing_certificate_path"], "trace_test_signer_cert.pem")
             self.assertTrue(verify_evidence_package(package)["all_pass"])
 
+    def test_manifest_sign_derives_public_key_and_default_label(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ingest_case(FIXTURE, "CASE-SIGN-DEFAULTS", "tester", "json", root / "cases")
+            classify_case(root / "cases" / "CASE-SIGN-DEFAULTS", "tester")
+            package = export_case_report(root / "cases" / "CASE-SIGN-DEFAULTS", root / "out", "tester")
+            _, ca_cert, private_key, _, signing_cert = self._build_ca_environment(root, "TRACE Derived Signer")
+            sign_manifest(package, private_key, None, None, [], signing_cert)
+            derived_public_key = package / "manifest_signer_public.pem"
+            self.assertTrue(derived_public_key.exists())
+            verification = verify_manifest_signature(package, derived_public_key)
+            self.assertTrue(verification["all_pass"])
+            certificate_verification = verify_signing_certificate(package, ca_cert)
+            self.assertTrue(certificate_verification["all_pass"])
+            trust_metadata = read_json(package / "trust_metadata.json")
+            self.assertEqual(trust_metadata["signer_label"], "TRACE package signer")
+            self.assertEqual(trust_metadata["public_key_path"], "manifest_signer_public.pem")
+            self.assertTrue(verify_evidence_package(package)["all_pass"])
+
     def test_revoked_certificate_fails_verification(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

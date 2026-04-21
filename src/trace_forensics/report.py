@@ -551,7 +551,7 @@ def build_trust_metadata(
             copied_signing_certificate_path.write_bytes(signing_certificate_path.read_bytes())
     metadata = {
         "signature_algorithm": "RSA-SHA256",
-        "signer_label": signer_label or "unspecified",
+        "signer_label": signer_label or "TRACE package signer",
         "manifest_path": "manifest.json",
         "signature_path": "manifest.sig",
         "public_key_path": copied_public_key_path.name if copied_public_key_path else None,
@@ -582,7 +582,24 @@ def sign_manifest(
     signing_certificate_path: Path | None = None,
 ) -> Path:
     signature_path = package_dir / "manifest.sig"
-    build_trust_metadata(package_dir, public_key_path, signer_label, certificate_chain_paths, signing_certificate_path)
+    effective_public_key_path = public_key_path
+    if effective_public_key_path is None:
+        effective_public_key_path = package_dir / "manifest_signer_public.pem"
+        subprocess.run(
+            [
+                "openssl",
+                "pkey",
+                "-in",
+                str(private_key_path),
+                "-pubout",
+                "-out",
+                str(effective_public_key_path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    build_trust_metadata(package_dir, effective_public_key_path, signer_label, certificate_chain_paths, signing_certificate_path)
     manifest_path = package_dir / "manifest.json"
     manifest = read_json(manifest_path)
     manifest["package_hash_sha256"] = hash_package_contents(package_dir)
