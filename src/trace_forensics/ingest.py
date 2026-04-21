@@ -178,28 +178,55 @@ def parse_court_transcript_records(path: Path) -> list[dict]:
     return rows
 
 
+def flatten_axiom_candidates(value) -> list[dict]:
+    flattened: list[dict] = []
+    if isinstance(value, list):
+        for item in value:
+            flattened.extend(flatten_axiom_candidates(item))
+        return flattened
+    if isinstance(value, dict):
+        for key in ("messages", "transcript", "items", "chats"):
+            nested = value.get(key)
+            if isinstance(nested, list):
+                flattened.extend(flatten_axiom_candidates(nested))
+                direct_content = (
+                    extract_text_like(value.get("content"))
+                    or extract_text_like(value.get("text"))
+                    or extract_text_like(value.get("message"))
+                    or extract_text_like(value.get("body"))
+                    or ""
+                )
+                direct_speaker = (
+                    extract_speaker_like(value.get("speaker"))
+                    or extract_speaker_like(value.get("author"))
+                    or extract_speaker_like(value.get("sender"))
+                    or ""
+                )
+                if direct_content and direct_speaker:
+                    flattened.append(value)
+                return flattened
+        flattened.append(value)
+    return flattened
+
+
 def parse_axiom_json_records(path: Path) -> list[dict]:
     data = json.loads(path.read_text(encoding="utf-8"))
     candidates = None
-    if isinstance(data, dict):
+    if isinstance(data, list):
+        candidates = data
+    elif isinstance(data, dict):
         for key in ("messages", "transcript", "items", "chats"):
             if isinstance(data.get(key), list):
                 candidates = data[key]
                 break
     if candidates is None:
         raise ValueError("AXIOM JSON parser could not find a transcript-like message array")
-    flattened_candidates = []
-    for item in candidates:
-        if isinstance(item, dict):
-            nested_messages = item.get("messages") or item.get("transcript") or item.get("items")
-            if isinstance(nested_messages, list):
-                flattened_candidates.extend(nested_messages)
-                continue
-        flattened_candidates.append(item)
+    flattened_candidates = flatten_axiom_candidates(candidates)
     rows = []
     for item in flattened_candidates:
         content = (
             extract_text_like(item.get("content"))
+            or extract_text_like(item.get("text"))
             or extract_text_like(item.get("message"))
             or extract_text_like(item.get("body"))
             or ""
