@@ -31,6 +31,7 @@ class LLMConfig:
     retry_attempts: int = 3
     retry_backoff_seconds: float = 1.0
     runtime_metrics: dict | None = None
+    provider_circuit_reason: str | None = None
 
 
 SUPPORTED_HOSTED_ADAPTERS = {"openai-compatible", "anthropic-messages"}
@@ -46,6 +47,7 @@ def _ensure_runtime_metrics(config: LLMConfig) -> dict:
             "provider_attempts": 0,
             "provider_failures": 0,
             "fast_path_skips": 0,
+            "provider_short_circuits": 0,
             "provider_backoff_seconds": 0.0,
             "provider_wait_seconds": 0.0,
             "request_build_seconds": 0.0,
@@ -58,6 +60,14 @@ def _ensure_runtime_metrics(config: LLMConfig) -> dict:
 def _add_runtime_metric(config: LLMConfig, key: str, value: float = 1.0) -> None:
     metrics = _ensure_runtime_metrics(config)
     metrics[key] = metrics.get(key, 0.0) + value
+
+
+def _open_provider_circuit(config: LLMConfig, reason: str) -> None:
+    config.provider_circuit_reason = reason
+
+
+def _provider_circuit_reason(config: LLMConfig) -> str | None:
+    return config.provider_circuit_reason
 
 
 def _json_request(url: str, payload: dict) -> dict:
@@ -636,11 +646,34 @@ def classify_system_with_provider(
             )
 
     if config.provider == "hosted":
+        circuit_reason = _provider_circuit_reason(config)
+        if circuit_reason:
+            _add_runtime_metric(config, "provider_short_circuits")
+            reasoning = f"Hosted provider short-circuited after earlier failure ({circuit_reason}); fell back to local heuristic."
+            return (
+                heuristic_category,
+                heuristic_subcategory,
+                heuristic_role,
+                heuristic_confidence,
+                reasoning,
+                "heuristic",
+                "trace-heuristic-v1",
+                "heuristic",
+            )
         api_key = _hosted_api_key(config)
         if not api_key and config.replay_mode != "replay-only":
-            category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
+            _open_provider_circuit(config, "missing_api_key")
             reasoning = "Hosted provider API key unavailable; fell back to local heuristic."
-            return category, subcategory, role, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
+            return (
+                heuristic_category,
+                heuristic_subcategory,
+                heuristic_role,
+                heuristic_confidence,
+                reasoning,
+                "heuristic",
+                "trace-heuristic-v1",
+                "heuristic",
+            )
         adapter = _hosted_adapter(config)
         build_started_at = time.perf_counter()
         prompt = (
@@ -700,6 +733,8 @@ def classify_system_with_provider(
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError) as error:
             if _should_bypass_provider_fallback(config, error):
                 raise
+            if not _is_retryable_provider_error(error):
+                _open_provider_circuit(config, error.__class__.__name__)
             reasoning = "Hosted provider unavailable or invalid output; fell back to local heuristic."
             return (
                 heuristic_category,
@@ -870,8 +905,32 @@ def classify_user_with_provider(
             )
 
     if config.provider == "hosted":
+        circuit_reason = _provider_circuit_reason(config)
+        if circuit_reason:
+            _add_runtime_metric(config, "provider_short_circuits")
+            reasoning = f"Hosted provider short-circuited after earlier failure ({circuit_reason}); fell back to local heuristic."
+            provenance = {
+                "raw_provider_level": heuristic_level,
+                "raw_provider_indicators": heuristic_indicators,
+                "raw_provider_confidence": heuristic_confidence,
+                "lexical_baseline_level": heuristic_level,
+                "lexical_baseline_indicators": heuristic_indicators,
+                "applied_rules": ["provider_short_circuit"],
+                "pre_state_calibration_level": heuristic_level,
+            }
+            return (
+                heuristic_level,
+                heuristic_indicators,
+                heuristic_confidence,
+                reasoning,
+                "heuristic",
+                "trace-heuristic-v1",
+                "heuristic",
+                provenance,
+            )
         api_key = _hosted_api_key(config)
         if not api_key and config.replay_mode != "replay-only":
+            _open_provider_circuit(config, "missing_api_key")
             reasoning = "Hosted provider API key unavailable; fell back to local heuristic."
             provenance = {
                 "raw_provider_level": heuristic_level,
@@ -943,6 +1002,8 @@ def classify_user_with_provider(
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError) as error:
             if _should_bypass_provider_fallback(config, error):
                 raise
+            if not _is_retryable_provider_error(error):
+                _open_provider_circuit(config, error.__class__.__name__)
             reasoning = "Hosted provider unavailable or invalid output; fell back to local heuristic."
             provenance = {
                 "raw_provider_level": heuristic_level,

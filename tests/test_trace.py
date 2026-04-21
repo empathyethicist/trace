@@ -935,6 +935,32 @@ commonName = supplied
         self.assertEqual(config.runtime_metrics["provider_backoff_seconds"], 0.0)
         sleep_mock.assert_not_called()
 
+    def test_hosted_provider_circuit_short_circuits_following_messages(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model")
+        with patch.dict(os.environ, {}, clear=True):
+            first_level, _, _, first_reasoning, first_provider, _, _, _ = classify_user_with_provider(
+                "I feel hopeless and overwhelmed.",
+                "Current vulnerability level: Elevated; behavioral trend: no_harmful_behavior.",
+                [{"id": 1, "speaker": "user", "content": "I feel hopeless and overwhelmed.", "timestamp": None}],
+                config,
+            )
+            second_category, second_subcategory, _, _, second_reasoning, second_provider, _, _ = classify_system_with_provider(
+                "Tell me more about how you feel.",
+                2,
+                "Current vulnerability level: Elevated; behavioral trend: no_harmful_behavior.",
+                [{"id": 2, "speaker": "system", "content": "Tell me more about how you feel.", "timestamp": None}],
+                config,
+            )
+
+        self.assertGreaterEqual(first_level, 2)
+        self.assertEqual(first_provider, "heuristic")
+        self.assertIn("API key unavailable", first_reasoning)
+        self.assertIn(second_category, {"no_harmful_behavior", "relational_transgression"})
+        self.assertTrue(second_subcategory)
+        self.assertEqual(second_provider, "heuristic")
+        self.assertIn("short-circuited", second_reasoning)
+        self.assertEqual(config.runtime_metrics["provider_short_circuits"], 1)
+
     def test_user_vulnerability_calibration_raises_crisis_underclassification(self) -> None:
         level, indicators, confidence, reasoning, provenance = _calibrate_user_vulnerability(
             "I do not want to be here anymore.",
