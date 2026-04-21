@@ -1,7 +1,19 @@
 {
-  "generated_at": "2026-04-19T14:54:34+00:00",
-  "signer_label": "TRACE example benchmark signer",
+  "generated_at": "2026-04-21T01:11:39+00:00",
+  "signer_label": "TRACE benchmark signer",
   "files": [
+    {
+      "path": "bench_chain.pem",
+      "sha256": "756597ad211657cfd230521751a04b1fe90e575a36225b5592961f166d6b6ec5"
+    },
+    {
+      "path": "bench_signer_cert.pem",
+      "sha256": "756597ad211657cfd230521751a04b1fe90e575a36225b5592961f166d6b6ec5"
+    },
+    {
+      "path": "bench_signer_public.pem",
+      "sha256": "66e8bab2354b075a266f9f2893f60141eb846929556b83c962245d2ea3bd02e2"
+    },
     {
       "path": "benchmark_summary.json",
       "sha256": "9148cff310b73d65b6c6fcb2aac83d25159c67a12513440bbec2f90d396aa6d0"

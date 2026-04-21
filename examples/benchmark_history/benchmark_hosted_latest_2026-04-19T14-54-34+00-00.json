@@ -54,6 +54,12 @@
         "pass_thresholds": true,
         "elapsed_seconds": 0.0006
       }
-    ]
+    ],
+    "profile_settings": {
+      "provider": "mock",
+      "model": "benchmark-mock-model",
+      "adapter": "mock",
+      "window_size": 8
+    }
   }
 }

@@ -13,5 +13,7 @@
   "oldest_drift_free": true,
   "max_drift_count": 0,
   "min_drift_count": 0,
-  "drift_free_snapshots": 1
+  "drift_free_snapshots": 1,
+  "latest_policy_status": "not_applicable",
+  "policy_warn_or_fail_snapshots": 0
 }

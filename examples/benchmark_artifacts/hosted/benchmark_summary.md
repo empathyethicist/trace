@@ -1,6 +1,7 @@
 # TRACE Benchmark Summary
 
 - Profile: `hosted`
+- Profile Settings: `{'provider': 'mock', 'model': 'benchmark-mock-model', 'adapter': 'mock', 'window_size': 8}`
 - Fixtures: `5`
 - Passed: `5`
 - Failed: `0`

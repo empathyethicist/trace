@@ -68,6 +68,12 @@
         "baseline_pass": true,
         "candidate_pass": true
       }
-    ]
+    ],
+    "candidate_profile_settings": {
+      "provider": "mock",
+      "model": "benchmark-mock-model",
+      "adapter": "mock",
+      "window_size": 8
+    }
   }
 }

@@ -11,3 +11,5 @@
 - Drift-Free Snapshots: `1` / `1`
 - Min / Max Drift Count: `0` / `0`
 - Latest Drift-Free Status: `True`
+- Latest Policy Status: `not_applicable`
+- Warn/Fail Snapshots: `0`

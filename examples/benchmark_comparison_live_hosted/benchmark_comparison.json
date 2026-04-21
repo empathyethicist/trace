@@ -5,6 +5,7 @@
   "candidate_profile_settings": {
     "provider": "hosted",
     "model": "provider-default",
+    "adapter": "openai-compatible",
     "window_size": 8
   },
   "references_compared": 5,

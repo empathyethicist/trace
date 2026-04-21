@@ -27,6 +27,7 @@ The benchmark artifacts demonstrate:
 - heuristic-profile benchmark summary output
 - hosted-profile benchmark summary output
 - live-hosted benchmark summary output
+- provider, model, and adapter metadata preserved in benchmark settings
 - JSON and Markdown benchmark artifacts suitable for review or archival
 - detached benchmark artifact manifests, signatures, and trust metadata
 - reproducible verification targets for reviewer spot-checks
@@ -34,6 +35,7 @@ The benchmark artifacts demonstrate:
 The benchmark comparison demonstrates:
 
 - profile-to-profile drift analysis
+- candidate profile adapter metadata preserved in comparison artifacts
 - zero-drift reporting across the bundled validation corpus
 - JSON and Markdown comparison artifacts for reproducibility
 

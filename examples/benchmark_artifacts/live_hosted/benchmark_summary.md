@@ -1,7 +1,7 @@
 # TRACE Benchmark Summary
 
 - Profile: `live-hosted`
-- Profile Settings: `{'provider': 'hosted', 'model': 'provider-default', 'window_size': 8}`
+- Profile Settings: `{'provider': 'hosted', 'model': 'provider-default', 'adapter': 'openai-compatible', 'window_size': 8}`
 - Fixtures: `5`
 - Passed: `2`
 - Failed: `3`

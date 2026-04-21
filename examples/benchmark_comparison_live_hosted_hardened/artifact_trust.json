@@ -1,12 +1,12 @@
 {
   "signer_label": "TRACE benchmark signer",
   "public_key_path": "hardened_public.pem",
-  "public_key_sha256": "019606ec5847c9022915d0abea230d35b6832a50706ae56d9ed4f472d7df6934",
+  "public_key_sha256": "26cb664a4929757dbc9ef5c359a2a2b2b925cb7aab953a1bc60ee015b24d5ff0",
   "signing_certificate_path": "hardened_cert.pem",
   "certificate_chain": [
     {
       "path": "hardened_chain.pem",
-      "sha256": "4d25b19a04c9b78c1da45272993c1cec63161d61f9b976934b7de8fde35ba2bb"
+      "sha256": "f61e48f1e9a75c6a969c65f4d08b925d52562a78cee15ec897acc057210d18f6"
     }
   ]
 }
