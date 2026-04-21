@@ -302,8 +302,12 @@ class TraceTests(unittest.TestCase):
             model_config = read_json(package / "configuration" / "model_config.json")
             self.assertEqual(report["execution_metadata"]["provider"], "heuristic")
             self.assertEqual(report["execution_metadata"]["adapter"], "heuristic")
+            self.assertEqual(report["model_configuration"]["provider"], "heuristic")
+            self.assertEqual(report["model_configuration"]["adapter"], "heuristic")
             self.assertEqual(manifest["execution_metadata"]["provider"], "heuristic")
             self.assertEqual(manifest["execution_metadata"]["adapter"], "heuristic")
+            self.assertEqual(manifest["model_configuration"]["provider"], "heuristic")
+            self.assertEqual(manifest["model_configuration"]["adapter"], "heuristic")
             self.assertEqual(model_config["adapter"], "heuristic")
 
     def test_manifest_sign_and_verify(self) -> None:

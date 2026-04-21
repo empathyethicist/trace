@@ -546,6 +546,7 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, exam
             "findings": findings,
             "override_summary": override_summary,
             "execution_metadata": execution_metadata,
+            "model_configuration": execution_metadata,
             "examiner_notes": examiner_notes,
             "generated_at": utc_now_iso(),
         },
@@ -596,6 +597,7 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, exam
         "package_hash_sha256": "",
         "classification_mode": classified["classification_mode"],
         "execution_metadata": execution_metadata,
+        "model_configuration": execution_metadata,
         "prompt_template_versions": prompt_template_manifest(),
         "schema_versions": {
             "behavioral": "zhang_2025_v1",
