@@ -54,5 +54,13 @@
       }
     ]
   },
-  "generated_at": "2026-04-19T12:50:39+00:00"
+  "override_summary": {
+    "accepted_count": 8,
+    "flagged_count": 0,
+    "overridden_count": 0,
+    "flagged_messages": [],
+    "overridden_messages": []
+  },
+  "examiner_notes": "",
+  "generated_at": "2026-04-21T00:08:22+00:00"
 }

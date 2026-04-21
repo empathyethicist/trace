@@ -1,8 +1,8 @@
 {
   "trace_version": "2.0.0",
   "case_id": "EXAMPLE-001",
-  "classified_timestamp": "2026-04-19T12:50:39+00:00",
-  "examiner_id": "D. Mobley",
+  "classified_timestamp": "2026-04-21T00:08:22+00:00",
+  "examiner_id": "Examiner-01",
   "classification_mode": "heuristic_assisted_human_reviewed",
   "llm_provider": "heuristic",
   "model_id": "trace-heuristic-v1",
@@ -25,7 +25,8 @@
         "reasoning": "Observable indicators: nobody cares",
         "confidence": 0.8,
         "requires_review": false,
-        "decision": "accepted"
+        "decision": "accepted",
+        "override_rationale": ""
       },
       "vulnerability": 3,
       "state_summary": "Current vulnerability level: Severe distress; behavioral trend: no_harmful_behavior."
@@ -44,7 +45,8 @@
         "reasoning": "Classified from local heuristic against prior vulnerability level 3.",
         "confidence": 0.65,
         "requires_review": false,
-        "decision": "accepted"
+        "decision": "accepted",
+        "override_rationale": ""
       },
       "vulnerability": null,
       "state_summary": "Current vulnerability level: Severe distress; behavioral trend: relational_transgression."
@@ -62,7 +64,8 @@
         "reasoning": "Observable indicators: none",
         "confidence": 0.95,
         "requires_review": false,
-        "decision": "accepted"
+        "decision": "accepted",
+        "override_rationale": ""
       },
       "vulnerability": 0,
       "state_summary": "Current vulnerability level: Severe distress; behavioral trend: relational_transgression."
@@ -81,7 +84,8 @@
         "reasoning": "Classified from local heuristic against prior vulnerability level 0.",
         "confidence": 0.85,
         "requires_review": false,
-        "decision": "accepted"
+        "decision": "accepted",
+        "override_rationale": ""
       },
       "vulnerability": null,
       "state_summary": "Current vulnerability level: Severe distress; behavioral trend: relational_transgression."
@@ -101,7 +105,8 @@
         "reasoning": "Observable indicators: gone",
         "confidence": 0.9,
         "requires_review": false,
-        "decision": "accepted"
+        "decision": "accepted",
+        "override_rationale": ""
       },
       "vulnerability": 4,
       "state_summary": "Current vulnerability level: Acute crisis; behavioral trend: relational_transgression."
@@ -120,7 +125,8 @@
         "reasoning": "Classified from local heuristic against prior vulnerability level 4.",
         "confidence": 0.85,
         "requires_review": false,
-        "decision": "accepted"
+        "decision": "accepted",
+        "override_rationale": ""
       },
       "vulnerability": null,
       "state_summary": "Current vulnerability level: Acute crisis; behavioral trend: relational_transgression."
@@ -140,7 +146,8 @@
         "reasoning": "Observable indicators: don't want to be here",
         "confidence": 0.9,
         "requires_review": false,
-        "decision": "accepted"
+        "decision": "accepted",
+        "override_rationale": ""
       },
       "vulnerability": 4,
       "state_summary": "Current vulnerability level: Acute crisis; behavioral trend: relational_transgression."
@@ -159,7 +166,8 @@
         "reasoning": "Classified from local heuristic against prior vulnerability level 4.",
         "confidence": 0.85,
         "requires_review": false,
-        "decision": "accepted"
+        "decision": "accepted",
+        "override_rationale": ""
       },
       "vulnerability": null,
       "state_summary": "Current vulnerability level: Acute crisis; behavioral trend: relational_transgression."

@@ -110,7 +110,7 @@ validation/
 ## Installation
 
 ```bash
-cd /home/dylan/trace
+cd trace
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
@@ -147,7 +147,7 @@ trace ingest \
   --input ./validation/companion_incident.json \
   --format json \
   --case-id DEMO-001 \
-  --examiner "D. Mobley"
+  --examiner "Examiner-01"
 
 trace classify \
   --case-id DEMO-001 \
@@ -156,7 +156,7 @@ trace classify \
 
 trace report \
   --case-id DEMO-001 \
-  --examiner "D. Mobley" \
+  --examiner "Examiner-01" \
   --output ./evidence
 ```
 
@@ -165,10 +165,10 @@ trace report \
 ### Ingest
 
 ```bash
-trace ingest --input transcript.json --format json --case-id CASE-001 --examiner "D. Mobley"
-trace ingest --input court_transcript.txt --format court --case-id CASE-002 --examiner "D. Mobley"
-trace ingest --input axiom_messages.json --format axiom --case-id CASE-003 --examiner "D. Mobley"
-trace ingest --input ufed_messages.xml --format ufed --case-id CASE-004 --examiner "D. Mobley"
+trace ingest --input transcript.json --format json --case-id CASE-001 --examiner "Examiner-01"
+trace ingest --input court_transcript.txt --format court --case-id CASE-002 --examiner "Examiner-01"
+trace ingest --input axiom_messages.json --format axiom --case-id CASE-003 --examiner "Examiner-01"
+trace ingest --input ufed_messages.xml --format ufed --case-id CASE-004 --examiner "Examiner-01"
 ```
 
 ### Classify
@@ -192,7 +192,7 @@ trace irr-compute --case-id CASE-001
 ### Report export
 
 ```bash
-trace report --case-id CASE-001 --examiner "D. Mobley" --output ./evidence
+trace report --case-id CASE-001 --examiner "Examiner-01" --output ./evidence
 ```
 
 ### Package verification and signing

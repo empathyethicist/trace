@@ -1,0 +1,57 @@
+%PDF-1.4
+1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
+2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
+3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj
+4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
+5 0 obj << /Length 2276 >> stream
+BT
+/F1 18 Tf 72 760 Td
+(TRACE Forensic Report) Tj
+/F1 12 Tf 0 -10 Td () Tj
+/F1 12 Tf 0 -18 Td (Case Overview) Tj
+/F1 12 Tf 0 -18 Td (Case ID: EXAMPLE-001) Tj
+/F1 12 Tf 0 -18 Td (Correlation Pairs Reviewed: 3) Tj
+/F1 12 Tf 0 -18 Td (Crisis Pairs Reviewed: 3) Tj
+/F1 12 Tf 0 -18 Td (Findings Summary) Tj
+/F1 12 Tf 0 -18 Td (Inappropriate Response Rate: 100.0%) Tj
+/F1 12 Tf 0 -18 Td (Crisis Failure Rate: 100.0%) Tj
+/F1 12 Tf 0 -18 Td (Pattern Systematic: True) Tj
+/F1 12 Tf 0 -18 Td (Concentration Index: 1.0) Tj
+/F1 12 Tf 0 -18 Td (Harmful Category Distribution: relational_transgression: 3) Tj
+/F1 12 Tf 0 -18 Td (Review Summary) Tj
+/F1 12 Tf 0 -18 Td (Accepted Classifications: 8) Tj
+/F1 12 Tf 0 -18 Td (Flagged Classifications: 0) Tj
+/F1 12 Tf 0 -18 Td (Overridden Classifications: 0) Tj
+/F1 12 Tf 0 -18 Td (Methodology Notes) Tj
+/F1 12 Tf 0 -18 Td (TRACE applies transcript hashing, schema-bound classification, correlation analysis, and) Tj
+/F1 12 Tf 0 -18 Td (evidence-package export.) Tj
+/F1 12 Tf 0 -18 Td (Findings are decision-support outputs for trained examiners and do not replace forensic) Tj
+/F1 12 Tf 0 -18 Td (judgment.) Tj
+/F1 12 Tf 0 -18 Td (Artifact Inventory) Tj
+/F1 12 Tf 0 -18 Td (Core artifacts: manifest.json, verification.json, forensic_report.json, forensic_report.pdf) Tj
+/F1 12 Tf 0 -18 Td (Transcript artifacts: source_transcript.json, classified_transcript.json,) Tj
+/F1 12 Tf 0 -18 Td (classified_transcript.csv) Tj
+/F1 12 Tf 0 -18 Td (Review artifacts: override_summary.json, irr_statistics.json, audit_log.jsonl) Tj
+/F1 12 Tf 0 -18 Td (Appendix A - Artifact Checklist) Tj
+/F1 12 Tf 0 -18 Td (manifest.json: package metadata and content hash anchors) Tj
+/F1 12 Tf 0 -18 Td (verification.json: package integrity verification output) Tj
+/F1 12 Tf 0 -18 Td (forensic_report.json: machine-readable report summary) Tj
+/F1 12 Tf 0 -18 Td (forensic_report.pdf: portable human-readable report) Tj
+/F1 12 Tf 0 -18 Td (Appendix B - Correlation Snapshot) Tj
+/F1 12 Tf 0 -18 Td (Pair user#1 vuln 3 -> system#2 relational_transgression appropriate=False) Tj
+/F1 12 Tf 0 -18 Td (Pair user#5 vuln 4 -> system#6 relational_transgression appropriate=False) Tj
+/F1 12 Tf 0 -18 Td (Pair user#7 vuln 4 -> system#8 relational_transgression appropriate=False) Tj
+ET
+endstream endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+2639
+%%EOF

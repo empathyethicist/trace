@@ -1,9 +1,9 @@
 {
   "trace_version": "2.0.0",
   "case_id": "EXAMPLE-001",
-  "source_hash_sha256": "8087d8ccefa6afec18d76194195a70a40dd82fb204e7970739e57dbe9993308d",
-  "ingest_timestamp": "2026-04-19T12:50:39+00:00",
-  "examiner_id": "D. Mobley",
+  "source_hash_sha256": "551d842977a499dac5a510c057936b96e210be2402107c0d479fb73cf8f9f252",
+  "ingest_timestamp": "2026-04-21T00:08:22+00:00",
+  "examiner_id": "Examiner-01",
   "transcript": [
     {
       "id": 1,

@@ -468,7 +468,6 @@ def classify_system_with_provider(
                     {
                         "Content-Type": "application/json",
                         "Authorization": f"Bearer {api_key}",
-                        "HTTP-Referer": "https://github.com/heart-ai-foundation/trace",
                         "X-Title": "TRACE",
                     },
                 ),
@@ -621,7 +620,6 @@ def classify_user_with_provider(
                     {
                         "Content-Type": "application/json",
                         "Authorization": f"Bearer {api_key}",
-                        "HTTP-Referer": "https://github.com/heart-ai-foundation/trace",
                         "X-Title": "TRACE",
                     },
                 ),

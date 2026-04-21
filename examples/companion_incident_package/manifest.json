@@ -1,11 +1,11 @@
 {
   "trace_version": "2.0.0",
   "case_id": "EXAMPLE-001",
-  "export_timestamp": "2026-04-19T12:50:39+00:00",
-  "examiner_id": "D. Mobley",
-  "source_hash_sha256": "8087d8ccefa6afec18d76194195a70a40dd82fb204e7970739e57dbe9993308d",
-  "classified_hash_sha256": "226198e7b62ea47cdccb1600815c66f77e8fed8b4bdba88e44eda4295b1471ee",
-  "package_hash_sha256": "e339610554956b4f5e6adffc8cd876c755e9f47e8c45893c96b5209c55438cb3",
+  "export_timestamp": "2026-04-21T00:08:22+00:00",
+  "examiner_id": "Examiner-01",
+  "source_hash_sha256": "551d842977a499dac5a510c057936b96e210be2402107c0d479fb73cf8f9f252",
+  "classified_hash_sha256": "1db2277920009bcc3185bac614fdcda3bd608e4942f81da3933760ee3a166702",
+  "package_hash_sha256": "8afb2967a8dad3a3fe80e2662b5a5f718f80c444d4bb4fb34824e905ed0b7809",
   "classification_mode": "heuristic_assisted_human_reviewed",
   "prompt_template_versions": {
     "system_behavioral": "sbc_v1.0",

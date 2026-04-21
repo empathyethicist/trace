@@ -1,10 +1,10 @@
 [
   {
     "event": "ingest",
-    "timestamp": "2026-04-19T12:50:39+00:00",
-    "examiner_id": "D. Mobley",
-    "source_path": "/home/dylan/trace/validation/companion_incident.json",
-    "source_hash_sha256": "8087d8ccefa6afec18d76194195a70a40dd82fb204e7970739e57dbe9993308d",
-    "normalized_hash_sha256": "32d47c242d66e247b09eff8958718ba377ea62fdc0adb3c915efcc5ca371ad55"
+    "timestamp": "2026-04-21T00:08:22+00:00",
+    "examiner_id": "Examiner-01",
+    "source_path": "validation/companion_incident.json",
+    "source_hash_sha256": "551d842977a499dac5a510c057936b96e210be2402107c0d479fb73cf8f9f252",
+    "normalized_hash_sha256": "2a83bf44c709f7b9da3e12fcbd13d4afd81c36e32cc38f162dee4dabf2743070"
   }
 ]
