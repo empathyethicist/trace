@@ -7,7 +7,12 @@ import sys
 from pathlib import Path
 
 from trace_forensics.llm import LLMConfig, classify_system_with_provider, classify_user_with_provider
-from trace_forensics.heuristics import classify_system_message, classify_user_message
+from trace_forensics.heuristics import (
+    classify_system_message,
+    classify_user_message,
+    has_acute_crisis_language,
+    has_practical_reorientation,
+)
 from trace_forensics.schemas import AI_ROLES, BEHAVIORAL_SCHEMA_VERSION, VULNERABILITY_LEVELS, VULNERABILITY_SCHEMA_VERSION
 from trace_forensics.storage import append_jsonl, read_json, utc_now_iso, write_json
 
@@ -27,6 +32,8 @@ def calibrate_user_vulnerability_from_state(
     prior_user_vulnerabilities: list[int],
 ) -> tuple[int, float, str]:
     lexical_level, _, _ = classify_user_message(content)
+    acute_language = has_acute_crisis_language(content)
+    practical_reorientation = has_practical_reorientation(content)
     if not prior_user_vulnerabilities:
         return level, confidence, reasoning
     recent = prior_user_vulnerabilities[-2:]
@@ -40,16 +47,39 @@ def calibrate_user_vulnerability_from_state(
     calibrated_reasoning = reasoning
     calibrated_confidence = confidence
 
-    if prior_max >= 4 and level >= 3 and lexical_level >= 4:
+    if prior_max >= 4 and level >= 3 and acute_language:
         calibrated_level = max(level, 4)
     elif prior_max >= 3 and level >= 2 and has_signal:
         calibrated_level = max(level, 3)
 
     if has_signal and elevated_recent_count >= 2:
-        if severe_recent_count >= 2 and trajectory_max >= 4 and level >= 3 and lexical_level >= 4:
+        if severe_recent_count >= 2 and trajectory_max >= 4 and level >= 3 and acute_language:
             calibrated_level = max(calibrated_level, 4)
         elif level >= 2:
             calibrated_level = max(calibrated_level, 3)
+
+    if practical_reorientation and lexical_level == 0:
+        if calibrated_level > 1:
+            calibrated_level = 0
+        elif level <= 1:
+            calibrated_level = 0
+        if calibrated_level < level:
+            calibrated_confidence = max(confidence, 0.8)
+            calibrated_reasoning = (
+                f"{reasoning} "
+                f"TRACE state calibration lowered vulnerability from {level} to {calibrated_level} "
+                f"because the current turn shifts back to concrete practical planning without direct distress indicators."
+            ).strip()
+            return calibrated_level, calibrated_confidence, calibrated_reasoning
+
+    if lexical_level == 3 and not acute_language and calibrated_level > 3:
+        calibrated_level = 3
+        calibrated_confidence = max(confidence, 0.8)
+        calibrated_reasoning = (
+            f"{reasoning} "
+            f"TRACE state calibration held vulnerability at 3 because the current turn reflects severe distress without explicit acute-crisis language."
+        ).strip()
+        return calibrated_level, calibrated_confidence, calibrated_reasoning
 
     if calibrated_level > level:
         calibrated_confidence = max(confidence, 0.8)

@@ -563,6 +563,32 @@ commonName = supplied
         self.assertEqual(confidence, 0.64)
         self.assertEqual(reasoning, "Provider reported severe distress.")
 
+    def test_state_calibration_deescalates_practical_reorientation(self) -> None:
+        level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+            "ok, anyway, i still need groceries + to email my prof",
+            2,
+            [],
+            0.6,
+            "The user shifted toward concrete tasks and daily responsibilities.",
+            [2, 3],
+        )
+        self.assertEqual(level, 0)
+        self.assertGreaterEqual(confidence, 0.8)
+        self.assertIn("lowered vulnerability", reasoning)
+
+    def test_state_calibration_caps_severe_distress_without_acute_language(self) -> None:
+        level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+            "I feel worthless and alone.",
+            4,
+            ["worthless", "alone"],
+            0.7,
+            "The user reports severe distress and isolation.",
+            [4, 3, 4],
+        )
+        self.assertEqual(level, 3)
+        self.assertGreaterEqual(confidence, 0.8)
+        self.assertIn("held vulnerability at 3", reasoning)
+
     def test_irr_metrics(self) -> None:
         self.assertAlmostEqual(cohen_kappa(["a", "a", "b"], ["a", "a", "b"]), 1.0)
         self.assertAlmostEqual(krippendorff_alpha_nominal(["x", "y"], ["x", "y"]), 1.0)
