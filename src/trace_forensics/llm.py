@@ -418,11 +418,11 @@ def classify_system_with_provider(
     state_summary: str,
     window_messages: list[dict],
     config: LLMConfig,
-) -> tuple[str, str, str, float, str]:
+) -> tuple[str, str, str, float, str, str, str, str]:
     if config.provider in {"heuristic", "none"}:
         category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
         reasoning = f"Classified from local heuristic against prior vulnerability level {prior_user_vulnerability}."
-        return category, subcategory, role, confidence, reasoning
+        return category, subcategory, role, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
 
     if config.provider == "mock":
         category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
@@ -453,7 +453,7 @@ def classify_system_with_provider(
         role = response["ai_role"]
         confidence = float(response["confidence"])
         reasoning = str(response["reasoning"])
-        return category, subcategory, role, confidence, reasoning
+        return category, subcategory, role, confidence, reasoning, "mock", config.model, "mock"
 
     if config.provider == "ollama":
         prompt = {
@@ -494,18 +494,21 @@ def classify_system_with_provider(
                 payload["ai_role"],
                 float(payload["confidence"]),
                 str(payload["reasoning"]),
+                "ollama",
+                config.model,
+                "ollama-generate",
             )
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
             category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
             reasoning = "Local runtime unavailable or invalid output; fell back to local heuristic."
-            return category, subcategory, role, confidence, reasoning
+            return category, subcategory, role, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
 
     if config.provider == "hosted":
         api_key = _hosted_api_key(config)
         if not api_key:
             category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
             reasoning = "Hosted provider API key unavailable; fell back to local heuristic."
-            return category, subcategory, role, confidence, reasoning
+            return category, subcategory, role, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
         adapter = _hosted_adapter(config)
         prompt = (
             "You are a forensic classification assistant. "
@@ -554,11 +557,14 @@ def classify_system_with_provider(
                 normalized_role,
                 _normalize_confidence(payload.get("confidence")),
                 reasoning,
+                "hosted",
+                config.model,
+                adapter,
             )
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
             category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
             reasoning = "Hosted provider unavailable or invalid output; fell back to local heuristic."
-            return category, subcategory, role, confidence, reasoning
+            return category, subcategory, role, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
 
     raise ValueError(f"Unsupported provider: {config.provider}")
 
@@ -568,11 +574,11 @@ def classify_user_with_provider(
     state_summary: str,
     window_messages: list[dict],
     config: LLMConfig,
-) -> tuple[int, list[str], float, str]:
+) -> tuple[int, list[str], float, str, str, str, str]:
     if config.provider in {"heuristic", "none"}:
         level, indicators, confidence = classify_user_message(content)
         reasoning = f"Observable indicators: {', '.join(indicators) if indicators else 'none'}"
-        return level, indicators, confidence, reasoning
+        return level, indicators, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
 
     if config.provider == "mock":
         level, indicators, confidence = classify_user_message(content)
@@ -596,13 +602,14 @@ def classify_user_with_provider(
                 "reasoning": f"Mock LLM suggestion using rolling-window state: {state_summary}",
             },
         )
-        return _calibrate_user_vulnerability(
+        level, indicators, confidence, reasoning = _calibrate_user_vulnerability(
             content,
             int(response["vulnerability_level"]),
             [str(item) for item in response.get("indicators_observed", [])],
             float(response["confidence"]),
             str(response["reasoning"]),
         )
+        return level, indicators, confidence, reasoning, "mock", config.model, "mock"
 
     if config.provider == "ollama":
         prompt = {
@@ -636,24 +643,25 @@ def classify_user_with_provider(
             )
             generated = response.get("response", "").strip()
             payload = json.loads(generated)
-            return _calibrate_user_vulnerability(
+            level, indicators, confidence, reasoning = _calibrate_user_vulnerability(
                 content,
                 int(payload["vulnerability_level"]),
                 [str(item) for item in payload.get("indicators_observed", [])],
                 float(payload["confidence"]),
                 str(payload["reasoning"]),
             )
+            return level, indicators, confidence, reasoning, "ollama", config.model, "ollama-generate"
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
             level, indicators, confidence = classify_user_message(content)
             reasoning = "Local runtime unavailable or invalid output; fell back to local heuristic."
-            return level, indicators, confidence, reasoning
+            return level, indicators, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
 
     if config.provider == "hosted":
         api_key = _hosted_api_key(config)
         if not api_key:
             level, indicators, confidence = classify_user_message(content)
             reasoning = "Hosted provider API key unavailable; fell back to local heuristic."
-            return level, indicators, confidence, reasoning
+            return level, indicators, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
         adapter = _hosted_adapter(config)
         prompt = (
             "You are a forensic classification assistant. "
@@ -688,16 +696,17 @@ def classify_user_with_provider(
             payload = _extract_json_object(generated)
             indicators = [str(item) for item in payload.get("indicators_observed", [])]
             reasoning = str(payload["reasoning"])
-            return _calibrate_user_vulnerability(
+            level, indicators, confidence, reasoning = _calibrate_user_vulnerability(
                 content,
                 _normalize_vulnerability_level(payload.get("vulnerability_level"), indicators, reasoning),
                 indicators,
                 _normalize_confidence(payload.get("confidence")),
                 reasoning,
             )
+            return level, indicators, confidence, reasoning, "hosted", config.model, adapter
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
             level, indicators, confidence = classify_user_message(content)
             reasoning = "Hosted provider unavailable or invalid output; fell back to local heuristic."
-            return level, indicators, confidence, reasoning
+            return level, indicators, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
 
     raise ValueError(f"Unsupported provider: {config.provider}")

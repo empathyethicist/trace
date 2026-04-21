@@ -139,6 +139,9 @@ def classify_case(
     classified: list[dict] = []
     current_user_vulnerability = 0
     prior_user_vulnerabilities: list[int] = []
+    provider_history: list[str] = []
+    model_history: list[str] = []
+    adapter_history: list[str] = []
     config = LLMConfig(provider=provider, model=model, temperature=temperature)
     config.cache_dir = case_dir / ".llm_cache"
     config.replay_dir = replay_dir
@@ -149,7 +152,7 @@ def classify_case(
         state_summary = build_state_summary(classified, window_size=window_size) if classified else "Current vulnerability level: Baseline; behavioral trend: no_harmful_behavior."
         window_messages = build_window(transcript, index, window_size)
         if record["speaker"] == "user":
-            level, indicators, confidence, reasoning = classify_user_with_provider(
+            level, indicators, confidence, reasoning, actual_provider, actual_model, actual_adapter = classify_user_with_provider(
                 record["content"],
                 state_summary,
                 window_messages,
@@ -177,10 +180,22 @@ def classify_case(
                 "override_rationale": "",
             }
             record["classification"] = review_classification(record, review_mode)
+            record["classification_provider"] = actual_provider
+            record["classification_model"] = actual_model
+            record["classification_adapter"] = actual_adapter
             current_user_vulnerability = level
             prior_user_vulnerabilities.append(level)
         else:
-            category, subcategory, role, confidence, reasoning = classify_system_with_provider(
+            (
+                category,
+                subcategory,
+                role,
+                confidence,
+                reasoning,
+                actual_provider,
+                actual_model,
+                actual_adapter,
+            ) = classify_system_with_provider(
                 record["content"],
                 current_user_vulnerability,
                 state_summary,
@@ -200,7 +215,13 @@ def classify_case(
                 "override_rationale": "",
             }
             record["classification"] = review_classification(record, review_mode)
+            record["classification_provider"] = actual_provider
+            record["classification_model"] = actual_model
+            record["classification_adapter"] = actual_adapter
         record["state_summary"] = build_state_summary(classified + [record], window_size=window_size)
+        provider_history.append(actual_provider)
+        model_history.append(actual_model)
+        adapter_history.append(actual_adapter)
         classified.append(record)
         append_jsonl(
             case_dir / "audit_log.jsonl",
@@ -213,10 +234,20 @@ def classify_case(
                 "speaker": record["speaker"],
                 "decision": record["classification"]["decision"],
                 "requires_review": record["classification"]["requires_review"],
-                "provider": provider,
-                "model": model,
+                "requested_provider": provider,
+                "requested_model": model,
+                "provider": actual_provider,
+                "model": actual_model,
+                "adapter": actual_adapter,
             },
         )
+
+    provider_counts = Counter(provider_history)
+    model_counts = Counter(model_history)
+    adapter_counts = Counter(adapter_history)
+    effective_provider = provider_history[0] if len(provider_counts) == 1 else "mixed"
+    effective_model = model_history[0] if len(model_counts) == 1 else "mixed"
+    effective_adapter = adapter_history[0] if len(adapter_counts) == 1 else "mixed"
 
     output = {
         "trace_version": source["trace_version"],
@@ -224,17 +255,22 @@ def classify_case(
         "classified_timestamp": utc_now_iso(),
         "examiner_id": examiner_id,
         "classification_mode": "manual" if mode == "manual" else "heuristic_assisted_human_reviewed",
-        "llm_provider": "none" if mode == "manual" else provider,
-        "model_id": "manual-human-review" if mode == "manual" else model,
+        "requested_llm_provider": "none" if mode == "manual" else provider,
+        "requested_model_id": "manual-human-review" if mode == "manual" else model,
+        "llm_provider": "none" if mode == "manual" else effective_provider,
+        "model_id": "manual-human-review" if mode == "manual" else effective_model,
         "llm_adapter": (
             "none"
             if mode == "manual"
             else (
-                (adapter or os.environ.get("TRACE_HOSTED_ADAPTER", "openai-compatible"))
-                if provider == "hosted"
-                else ("ollama-generate" if provider == "ollama" else (adapter or provider))
+                effective_adapter
             )
         ),
+        "execution_summary": {
+            "provider_counts": dict(provider_counts),
+            "model_counts": dict(model_counts),
+            "adapter_counts": dict(adapter_counts),
+        },
         "temperature": temperature,
         "window_size": window_size,
         "review_mode": review_mode,

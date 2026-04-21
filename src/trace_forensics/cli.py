@@ -145,7 +145,9 @@ def init_workspace(root: Path) -> dict:
                     "",
                     "1. `trace config-check --provider heuristic`",
                     "2. `trace config-check --provider hosted`",
-                    "3. `trace validate --reference ./validation/companion_incident.json --root ./validation_runs`",
+                    "3. `trace validate --reference <reference-transcript.json> --root ./validation_runs`",
+                    "",
+                    "Note: provide a reference fixture path from the TRACE repo checkout or your own validation corpus.",
                     "",
                 ]
             )

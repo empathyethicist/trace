@@ -54,7 +54,7 @@ def parse_json_records(path: Path) -> list[dict]:
         parsed.append(
             {
                 "id": idx,
-                "speaker": speaker,
+                "speaker": normalize_speaker(speaker),
                 "timestamp": item.get("timestamp"),
                 "content": str(item.get("content", "")).strip(),
                 "classification": None,
@@ -72,7 +72,7 @@ def parse_csv_records(path: Path) -> list[dict]:
             rows.append(
                 {
                     "id": idx,
-                    "speaker": str(row.get("speaker", "")).strip().lower(),
+                    "speaker": normalize_speaker(str(row.get("speaker", ""))),
                     "timestamp": row.get("timestamp") or None,
                     "content": str(row.get("content", "")).strip(),
                     "classification": None,

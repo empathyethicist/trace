@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import unittest
@@ -12,6 +13,7 @@ from trace_forensics.classify import calibrate_user_vulnerability_from_state
 from trace_forensics.cli import apply_runtime_provider_overrides, evaluate_config, init_workspace, main
 from trace_forensics.ingest import (
     ingest_case,
+    parse_json_records,
     parse_axiom_json_records,
     parse_court_transcript_records,
     parse_text_records,
@@ -97,6 +99,32 @@ class TraceTests(unittest.TestCase):
             records = parse_text_records(path)
             self.assertEqual(len(records), 2)
             self.assertEqual(records[0]["speaker"], "user")
+
+    def test_parse_json_records_normalizes_speakers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sample.json"
+            path.write_text(
+                json.dumps(
+                    [
+                        {"speaker": "Human", "content": "hello"},
+                        {"speaker": "Assistant", "content": "hi"},
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            records = parse_json_records(path)
+            self.assertEqual(records[0]["speaker"], "user")
+            self.assertEqual(records[1]["speaker"], "system")
+
+    def test_csv_ingest_normalizes_speakers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "sample.csv"
+            path.write_text("speaker,content\nHuman,hello\nAI,hi\n", encoding="utf-8")
+            result = ingest_case(path, "CSV-NORMALIZE", "tester", "csv", root / "cases")
+            transcript = read_json(result.normalized_path)["transcript"]
+            self.assertEqual(transcript[0]["speaker"], "user")
+            self.assertEqual(transcript[1]["speaker"], "system")
 
     def test_config_check_hosted_requires_env(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
@@ -217,6 +245,10 @@ class TraceTests(unittest.TestCase):
                 self.assertTrue((root / relative).is_dir())
             self.assertTrue((root / "README.md").exists())
             self.assertTrue((root / ".gitignore").exists())
+            self.assertIn(
+                "provide a reference fixture path from the trace repo checkout or your own validation corpus",
+                (root / "README.md").read_text(encoding="utf-8").lower(),
+            )
 
     def test_hosted_adapter_payloads(self) -> None:
         openai_payload = _build_hosted_request_payload(
@@ -403,6 +435,37 @@ commonName = supplied
             self.assertEqual(classified["llm_provider"], "mock")
             self.assertEqual(classified["llm_adapter"], "mock")
             self.assertEqual(classified["window_size"], 4)
+
+    def test_hosted_missing_key_records_heuristic_fallback_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ingest_case(FIXTURE, "CASE-HOSTED-FALLBACK", "tester", "json", root / "cases")
+            classified_result = classify_case(
+                root / "cases" / "CASE-HOSTED-FALLBACK",
+                "tester",
+                provider="hosted",
+                model="requested-hosted-model",
+            )
+            classified = read_json(classified_result.classified_path)
+            self.assertEqual(classified["requested_llm_provider"], "hosted")
+            self.assertEqual(classified["requested_model_id"], "requested-hosted-model")
+            self.assertEqual(classified["llm_provider"], "heuristic")
+            self.assertEqual(classified["model_id"], "trace-heuristic-v1")
+            self.assertEqual(classified["llm_adapter"], "heuristic")
+            self.assertEqual(classified["execution_summary"]["provider_counts"]["heuristic"], 8)
+            self.assertIn(
+                "fell back to local heuristic",
+                classified["transcript"][0]["classification"]["reasoning"].lower(),
+            )
+            self.assertEqual(classified["transcript"][0]["classification_provider"], "heuristic")
+
+    def test_report_requires_classification(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ingest_case(FIXTURE, "CASE-UNCLASSIFIED", "tester", "json", root / "cases")
+            with self.assertRaises(FileNotFoundError) as ctx:
+                export_case_report(root / "cases" / "CASE-UNCLASSIFIED", root / "out", "tester")
+            self.assertIn("must be classified before report export", str(ctx.exception))
 
     def test_replay_only_uses_recorded_provider_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

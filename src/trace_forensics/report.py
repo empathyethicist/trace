@@ -517,7 +517,12 @@ def sign_manifest(
 
 def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, examiner_notes: str = "") -> Path:
     source = read_json(case_dir / "source_transcript.json")
-    classified = read_json(case_dir / "classified_transcript.json")
+    classified_path = case_dir / "classified_transcript.json"
+    if not classified_path.exists():
+        raise FileNotFoundError(
+            f"Case {source['case_id']} must be classified before report export. Missing: {classified_path}"
+        )
+    classified = read_json(classified_path)
     findings = compute_findings(classified["transcript"])
     override_summary = compute_override_summary(classified["transcript"])
     execution_metadata = {
