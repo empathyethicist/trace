@@ -1,0 +1,8 @@
+include README.md
+include LICENSE
+include CONTRIBUTING.md
+include SECURITY.md
+include .env.example
+recursive-include docs *.md
+recursive-include examples *.json *.md *.pem *.sig
+recursive-include validation *.json *.txt *.xml

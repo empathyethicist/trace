@@ -56,3 +56,27 @@ For external evaluation today, the correct operational flow is:
 3. run `trace config-check`
 4. run validation fixtures
 5. then move into local or hosted evaluation as needed
+
+## Release build helper
+
+TRACE now includes:
+
+```bash
+./scripts/build_release.sh
+```
+
+This script:
+
+- runs the test suite
+- builds the sdist and wheel
+- writes checksums for the build outputs
+
+## Demo helper
+
+TRACE also includes:
+
+```bash
+./scripts/demo_trace.sh
+```
+
+This is the fastest end-to-end local demo path for new evaluators.
