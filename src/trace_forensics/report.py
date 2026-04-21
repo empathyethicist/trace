@@ -122,6 +122,52 @@ def compute_override_summary(transcript: list[dict]) -> dict:
     }
 
 
+def compute_calibration_summary(transcript: list[dict]) -> dict:
+    calibrated_messages = []
+    rule_counts: Counter[str] = Counter()
+    raised_count = 0
+    lowered_count = 0
+    unchanged_count = 0
+    for message in transcript:
+        if message.get("speaker") != "user":
+            continue
+        classification = message.get("classification") or {}
+        provenance = classification.get("calibration_provenance") or {}
+        raw_level = provenance.get("raw_provider_level")
+        final_level = provenance.get("final_level", classification.get("vulnerability_level"))
+        rules = provenance.get("applied_rules") or []
+        if raw_level is None:
+            continue
+        for rule in rules:
+            rule_counts[rule] += 1
+        if final_level > raw_level:
+            raised_count += 1
+        elif final_level < raw_level:
+            lowered_count += 1
+        else:
+            unchanged_count += 1
+        if rules:
+            calibrated_messages.append(
+                {
+                    "message_id": message["id"],
+                    "raw_provider_level": raw_level,
+                    "lexical_baseline_level": provenance.get("lexical_baseline_level"),
+                    "pre_state_calibration_level": provenance.get("pre_state_calibration_level"),
+                    "final_level": final_level,
+                    "applied_rules": rules,
+                }
+            )
+    return {
+        "user_messages_reviewed": raised_count + lowered_count + unchanged_count,
+        "messages_with_calibration_rules": len(calibrated_messages),
+        "raised_count": raised_count,
+        "lowered_count": lowered_count,
+        "unchanged_count": unchanged_count,
+        "rule_counts": dict(rule_counts),
+        "calibrated_messages": calibrated_messages,
+    }
+
+
 def hash_path(path: Path) -> str:
     digest = hashlib.sha256()
     if path.is_dir():
@@ -151,9 +197,11 @@ def write_report_markdown(
     case_id: str,
     findings: dict,
     override_summary: dict,
+    calibration_summary: dict | None = None,
     execution_metadata: dict | None = None,
     examiner_notes: str = "",
 ) -> str:
+    calibration_summary = calibration_summary or {}
     execution_metadata = execution_metadata or {}
     top_categories = findings["pattern_distribution"]["distribution"]
     if top_categories:
@@ -187,13 +235,20 @@ def write_report_markdown(
         f"- Accepted Classifications: `{override_summary['accepted_count']}`\n"
         f"- Flagged Classifications: `{override_summary['flagged_count']}`\n"
         f"- Overridden Classifications: `{override_summary['overridden_count']}`\n"
+        "\n## Calibration Summary\n\n"
+        f"- User Messages Reviewed: `{calibration_summary.get('user_messages_reviewed', 0)}`\n"
+        f"- Messages With Calibration Rules: `{calibration_summary.get('messages_with_calibration_rules', 0)}`\n"
+        f"- Raised by Calibration: `{calibration_summary.get('raised_count', 0)}`\n"
+        f"- Lowered by Calibration: `{calibration_summary.get('lowered_count', 0)}`\n"
+        f"- Unchanged After Calibration: `{calibration_summary.get('unchanged_count', 0)}`\n"
+        f"- Calibration Rule Counts: `{calibration_summary.get('rule_counts', {})}`\n"
         "\n## Methodology Notes\n\n"
         "- TRACE applies transcript hashing, schema-bound classification, correlation analysis, and evidence-package export.\n"
         "- Findings are decision-support outputs for trained examiners and do not replace forensic judgment.\n"
         "\n## Artifact Inventory\n\n"
         "- Core artifacts: `manifest.json`, `verification.json`, `forensic_report.json`, `forensic_report.pdf`\n"
         "- Transcript artifacts: `source_transcript.json`, `classified_transcript.json`, `classified_transcript.csv`\n"
-        "- Review artifacts: `override_summary.json`, `irr_statistics.json`, `audit_log.jsonl`\n"
+        "- Review artifacts: `override_summary.json`, `calibration_summary.json`, `irr_statistics.json`, `audit_log.jsonl`\n"
     ]
     if examiner_notes.strip():
         lines.append("\n## Examiner Notes\n\n")
@@ -206,6 +261,16 @@ def write_report_markdown(
             lines.append(
                 f"- Message `{item['message_id']}` ({item['speaker']}): "
                 f"`{item['override_rationale'] or 'No rationale provided'}`\n"
+            )
+    if calibration_summary.get("calibrated_messages"):
+        lines.append("\n## Calibration Detail\n\n")
+        for item in calibration_summary["calibrated_messages"][:10]:
+            lines.append(
+                f"- Message `{item['message_id']}`: raw=`{item['raw_provider_level']}` "
+                f"lexical=`{item.get('lexical_baseline_level')}` "
+                f"pre-state=`{item.get('pre_state_calibration_level')}` "
+                f"final=`{item['final_level']}` "
+                f"rules=`{item['applied_rules']}`\n"
             )
     lines.append("\n## Appendix A — Artifact Checklist\n\n")
     lines.append("| Artifact | Purpose |\n|---|---|\n")
@@ -254,9 +319,11 @@ def write_report_pdf(
     case_id: str,
     findings: dict,
     override_summary: dict,
+    calibration_summary: dict | None = None,
     execution_metadata: dict | None = None,
     examiner_notes: str = "",
 ) -> None:
+    calibration_summary = calibration_summary or {}
     execution_metadata = execution_metadata or {}
     top_categories = findings["pattern_distribution"]["distribution"]
     if top_categories:
@@ -282,13 +349,20 @@ def write_report_pdf(
         f"Accepted Classifications: {override_summary['accepted_count']}",
         f"Flagged Classifications: {override_summary['flagged_count']}",
         f"Overridden Classifications: {override_summary['overridden_count']}",
+        "Calibration Summary",
+        f"User Messages Reviewed: {calibration_summary.get('user_messages_reviewed', 0)}",
+        f"Messages With Calibration Rules: {calibration_summary.get('messages_with_calibration_rules', 0)}",
+        f"Raised by Calibration: {calibration_summary.get('raised_count', 0)}",
+        f"Lowered by Calibration: {calibration_summary.get('lowered_count', 0)}",
+        f"Unchanged After Calibration: {calibration_summary.get('unchanged_count', 0)}",
+        f"Calibration Rule Counts: {calibration_summary.get('rule_counts', {})}",
         "Methodology Notes",
         "TRACE applies transcript hashing, schema-bound classification, correlation analysis, and evidence-package export.",
         "Findings are decision-support outputs for trained examiners and do not replace forensic judgment.",
         "Artifact Inventory",
         "Core artifacts: manifest.json, verification.json, forensic_report.json, forensic_report.pdf",
         "Transcript artifacts: source_transcript.json, classified_transcript.json, classified_transcript.csv",
-        "Review artifacts: override_summary.json, irr_statistics.json, audit_log.jsonl",
+        "Review artifacts: override_summary.json, calibration_summary.json, irr_statistics.json, audit_log.jsonl",
         "Appendix A - Artifact Checklist",
         "manifest.json: package metadata and content hash anchors",
         "verification.json: package integrity verification output",
@@ -525,6 +599,7 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, exam
     classified = read_json(classified_path)
     findings = compute_findings(classified["transcript"])
     override_summary = compute_override_summary(classified["transcript"])
+    calibration_summary = compute_calibration_summary(classified["transcript"])
     execution_metadata = {
         "provider": classified.get("llm_provider", "heuristic"),
         "model": classified.get("model_id", "trace-heuristic-v1"),
@@ -541,15 +616,16 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, exam
     write_json(package_dir / "chain_of_custody.json", read_json(case_dir / "chain_of_custody.json"))
     write_json(package_dir / "irr_statistics.json", irr_stats)
     (package_dir / "forensic_report.md").write_text(
-        write_report_markdown(source["case_id"], findings, override_summary, execution_metadata, examiner_notes), encoding="utf-8"
+        write_report_markdown(source["case_id"], findings, override_summary, calibration_summary, execution_metadata, examiner_notes), encoding="utf-8"
     )
-    write_report_pdf(package_dir / "forensic_report.pdf", source["case_id"], findings, override_summary, execution_metadata, examiner_notes)
+    write_report_pdf(package_dir / "forensic_report.pdf", source["case_id"], findings, override_summary, calibration_summary, execution_metadata, examiner_notes)
     write_json(
         package_dir / "forensic_report.json",
         {
             "case_id": source["case_id"],
             "findings": findings,
             "override_summary": override_summary,
+            "calibration_summary": calibration_summary,
             "execution_metadata": execution_metadata,
             "model_configuration": execution_metadata,
             "examiner_notes": examiner_notes,
@@ -557,6 +633,7 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, exam
         },
     )
     write_json(package_dir / "override_summary.json", override_summary)
+    write_json(package_dir / "calibration_summary.json", calibration_summary)
     (package_dir / "audit_log.jsonl").write_text((case_dir / "audit_log.jsonl").read_text(encoding="utf-8"), encoding="utf-8")
     for filename, contents in prompt_template_files().items():
         (config_dir / filename).write_text(contents + "\n", encoding="utf-8")
@@ -603,6 +680,7 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, exam
         "classification_mode": classified["classification_mode"],
         "execution_metadata": execution_metadata,
         "model_configuration": execution_metadata,
+        "calibration_summary": calibration_summary,
         "prompt_template_versions": prompt_template_manifest(),
         "schema_versions": {
             "behavioral": "zhang_2025_v1",

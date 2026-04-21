@@ -22,7 +22,7 @@ from trace_forensics.ingest import (
 from trace_forensics.irr import cohen_kappa, compute_irr, import_second_coder, krippendorff_alpha_nominal, krippendorff_alpha_ordinal
 from trace_forensics.llm import _calibrate_user_vulnerability
 from trace_forensics.llm import _build_hosted_headers, _build_hosted_request_payload, _extract_hosted_text
-from trace_forensics.report import compute_findings, export_case_report, verify_evidence_package
+from trace_forensics.report import compute_calibration_summary, compute_findings, export_case_report, verify_evidence_package
 from trace_forensics.report import sign_manifest, verify_manifest_signature, verify_signing_certificate
 from trace_forensics.storage import read_json
 from trace_forensics.storage import write_json
@@ -329,6 +329,7 @@ class TraceTests(unittest.TestCase):
             self.assertTrue((package / "configuration" / "prompt_templates" / "sbc_v1.0.txt").exists())
             self.assertTrue((package / "forensic_report.pdf").exists())
             self.assertTrue((package / "override_summary.json").exists())
+            self.assertTrue((package / "calibration_summary.json").exists())
             self.assertTrue(verify_evidence_package(package)["all_pass"])
             report = read_json(package / "forensic_report.json")
             manifest = read_json(package / "manifest.json")
@@ -341,6 +342,8 @@ class TraceTests(unittest.TestCase):
             self.assertEqual(manifest["execution_metadata"]["adapter"], "heuristic")
             self.assertEqual(manifest["model_configuration"]["provider"], "heuristic")
             self.assertEqual(manifest["model_configuration"]["adapter"], "heuristic")
+            self.assertIn("calibration_summary", report)
+            self.assertIn("calibration_summary", manifest)
             self.assertEqual(model_config["adapter"], "heuristic")
 
     def test_manifest_sign_and_verify(self) -> None:
@@ -466,6 +469,45 @@ commonName = supplied
                 classified["transcript"][0]["classification"]["vulnerability_level"],
             )
             self.assertEqual(provenance["applied_rules"], [])
+
+    def test_compute_calibration_summary_counts_rules(self) -> None:
+        transcript = [
+            {
+                "id": 1,
+                "speaker": "user",
+                "classification": {
+                    "vulnerability_level": 3,
+                    "calibration_provenance": {
+                        "raw_provider_level": 2,
+                        "lexical_baseline_level": 2,
+                        "pre_state_calibration_level": 2,
+                        "final_level": 3,
+                        "applied_rules": ["state_raise_elevated_trajectory"],
+                    },
+                },
+            },
+            {
+                "id": 2,
+                "speaker": "user",
+                "classification": {
+                    "vulnerability_level": 0,
+                    "calibration_provenance": {
+                        "raw_provider_level": 2,
+                        "lexical_baseline_level": 0,
+                        "pre_state_calibration_level": 2,
+                        "final_level": 0,
+                        "applied_rules": ["state_lower_practical_reorientation"],
+                    },
+                },
+            },
+        ]
+        summary = compute_calibration_summary(transcript)
+        self.assertEqual(summary["user_messages_reviewed"], 2)
+        self.assertEqual(summary["messages_with_calibration_rules"], 2)
+        self.assertEqual(summary["raised_count"], 1)
+        self.assertEqual(summary["lowered_count"], 1)
+        self.assertEqual(summary["rule_counts"]["state_raise_elevated_trajectory"], 1)
+        self.assertEqual(summary["rule_counts"]["state_lower_practical_reorientation"], 1)
 
     def test_report_requires_classification(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
