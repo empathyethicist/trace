@@ -348,6 +348,10 @@ def classify_case(
         "audit_log_seconds": round(audit_log_seconds, 4),
         "write_output_seconds": 0.0,
         "total_seconds": 0.0,
+        "llm_runtime_metrics": {
+            key: round(value, 4) if isinstance(value, float) else value
+            for key, value in (config.runtime_metrics or {}).items()
+        },
     }
     write_started_at = perf_counter()
     write_json(classified_path, output)

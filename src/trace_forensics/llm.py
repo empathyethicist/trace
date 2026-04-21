@@ -29,10 +29,30 @@ class LLMConfig:
     replay_mode: str = "off"
     retry_attempts: int = 3
     retry_backoff_seconds: float = 1.0
+    runtime_metrics: dict | None = None
 
 
 SUPPORTED_HOSTED_ADAPTERS = {"openai-compatible", "anthropic-messages"}
 _REPLAY_INDEX_CACHE: dict[tuple[str, int, int], dict[str, dict]] = {}
+
+
+def _ensure_runtime_metrics(config: LLMConfig) -> dict:
+    if config.runtime_metrics is None:
+        config.runtime_metrics = {
+            "cache_hits": 0,
+            "replay_hits": 0,
+            "provider_fetches": 0,
+            "provider_wait_seconds": 0.0,
+            "request_build_seconds": 0.0,
+            "response_normalization_seconds": 0.0,
+            "calibration_seconds": 0.0,
+        }
+    return config.runtime_metrics
+
+
+def _add_runtime_metric(config: LLMConfig, key: str, value: float = 1.0) -> None:
+    metrics = _ensure_runtime_metrics(config)
+    metrics[key] = metrics.get(key, 0.0) + value
 
 
 def _json_request(url: str, payload: dict) -> dict:
@@ -171,14 +191,19 @@ def _fetch_or_replay_response(
 ) -> dict:
     cached = _read_cache(config, key)
     if cached is not None:
+        _add_runtime_metric(config, "cache_hits")
         return cached
     replayed = _read_replay_response(config, key)
     if replayed is not None:
+        _add_runtime_metric(config, "replay_hits")
         _write_cache(config, key, replayed)
         return replayed
     if config.replay_mode == "replay-only":
         raise ValueError(f"Replay-only mode could not find recorded response for key {key}")
+    fetch_started_at = time.perf_counter()
     response = _request_with_retry(fetcher, config.retry_attempts, config.retry_backoff_seconds)
+    _add_runtime_metric(config, "provider_fetches")
+    _add_runtime_metric(config, "provider_wait_seconds", time.perf_counter() - fetch_started_at)
     _write_cache(config, key, response)
     if config.replay_mode in {"record", "record-and-replay"}:
         _record_replay_response(
@@ -461,12 +486,14 @@ def classify_system_with_provider(
 
     if config.provider == "mock":
         category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
+        build_started_at = time.perf_counter()
         request_payload = {
             "state_summary": state_summary,
             "window_messages": window_messages,
             "target_content": content,
             "prior_user_vulnerability": prior_user_vulnerability,
         }
+        _add_runtime_metric(config, "request_build_seconds", time.perf_counter() - build_started_at)
         key = _cache_key("system", config.model, request_payload)
         response = _fetch_or_replay_response(
             config,
@@ -483,20 +510,24 @@ def classify_system_with_provider(
                 "reasoning": f"Mock LLM suggestion using rolling-window state: {state_summary}",
             },
         )
+        normalize_started_at = time.perf_counter()
         category = response["behavioral_category"]
         subcategory = response["behavioral_subcategory"]
         role = response["ai_role"]
         confidence = float(response["confidence"])
         reasoning = str(response["reasoning"])
+        _add_runtime_metric(config, "response_normalization_seconds", time.perf_counter() - normalize_started_at)
         return category, subcategory, role, confidence, reasoning, "mock", config.model, "mock"
 
     if config.provider == "ollama":
+        build_started_at = time.perf_counter()
         prompt = {
             "state_summary": state_summary,
             "window_messages": window_messages,
             "target_content": content,
             "prior_user_vulnerability": prior_user_vulnerability,
         }
+        _add_runtime_metric(config, "request_build_seconds", time.perf_counter() - build_started_at)
         key = _cache_key("system", config.model, prompt)
         try:
             response = _fetch_or_replay_response(
@@ -521,8 +552,10 @@ def classify_system_with_provider(
                     },
                 ),
             )
+            normalize_started_at = time.perf_counter()
             generated = response.get("response", "").strip()
             payload = json.loads(generated)
+            _add_runtime_metric(config, "response_normalization_seconds", time.perf_counter() - normalize_started_at)
             return (
                 payload["behavioral_category"],
                 payload["behavioral_subcategory"],
@@ -545,6 +578,7 @@ def classify_system_with_provider(
             reasoning = "Hosted provider API key unavailable; fell back to local heuristic."
             return category, subcategory, role, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
         adapter = _hosted_adapter(config)
+        build_started_at = time.perf_counter()
         prompt = (
             "You are a forensic classification assistant. "
             "Return only valid JSON with keys behavioral_category, behavioral_subcategory, ai_role, reasoning, confidence. "
@@ -560,6 +594,7 @@ def classify_system_with_provider(
             temperature=config.temperature,
             prompt=prompt,
         )
+        _add_runtime_metric(config, "request_build_seconds", time.perf_counter() - build_started_at)
         key = _cache_key("system", config.model, request_payload)
         try:
             response = _fetch_or_replay_response(
@@ -575,6 +610,7 @@ def classify_system_with_provider(
                     _build_hosted_headers(adapter, api_key or ""),
                 ),
             )
+            normalize_started_at = time.perf_counter()
             generated = _extract_hosted_text(adapter, response)
             payload = _extract_json_object(generated)
             reasoning = str(payload["reasoning"])
@@ -586,6 +622,7 @@ def classify_system_with_provider(
                 prior_user_vulnerability,
                 reasoning,
             )
+            _add_runtime_metric(config, "response_normalization_seconds", time.perf_counter() - normalize_started_at)
             return (
                 normalized_category,
                 normalized_subcategory,
@@ -628,11 +665,13 @@ def classify_user_with_provider(
 
     if config.provider == "mock":
         level, indicators, confidence = classify_user_message(content)
+        build_started_at = time.perf_counter()
         request_payload = {
             "state_summary": state_summary,
             "window_messages": window_messages,
             "target_content": content,
         }
+        _add_runtime_metric(config, "request_build_seconds", time.perf_counter() - build_started_at)
         key = _cache_key("user", config.model, request_payload)
         response = _fetch_or_replay_response(
             config,
@@ -648,6 +687,7 @@ def classify_user_with_provider(
                 "reasoning": f"Mock LLM suggestion using rolling-window state: {state_summary}",
             },
         )
+        calibration_started_at = time.perf_counter()
         level, indicators, confidence, reasoning, provenance = _calibrate_user_vulnerability(
             content,
             int(response["vulnerability_level"]),
@@ -655,14 +695,17 @@ def classify_user_with_provider(
             float(response["confidence"]),
             str(response["reasoning"]),
         )
+        _add_runtime_metric(config, "calibration_seconds", time.perf_counter() - calibration_started_at)
         return level, indicators, confidence, reasoning, "mock", config.model, "mock", provenance
 
     if config.provider == "ollama":
+        build_started_at = time.perf_counter()
         prompt = {
             "state_summary": state_summary,
             "window_messages": window_messages,
             "target_content": content,
         }
+        _add_runtime_metric(config, "request_build_seconds", time.perf_counter() - build_started_at)
         key = _cache_key("user", config.model, prompt)
         try:
             response = _fetch_or_replay_response(
@@ -687,8 +730,11 @@ def classify_user_with_provider(
                     },
                 ),
             )
+            normalize_started_at = time.perf_counter()
             generated = response.get("response", "").strip()
             payload = json.loads(generated)
+            _add_runtime_metric(config, "response_normalization_seconds", time.perf_counter() - normalize_started_at)
+            calibration_started_at = time.perf_counter()
             level, indicators, confidence, reasoning, provenance = _calibrate_user_vulnerability(
                 content,
                 int(payload["vulnerability_level"]),
@@ -696,6 +742,7 @@ def classify_user_with_provider(
                 float(payload["confidence"]),
                 str(payload["reasoning"]),
             )
+            _add_runtime_metric(config, "calibration_seconds", time.perf_counter() - calibration_started_at)
             return level, indicators, confidence, reasoning, "ollama", config.model, "ollama-generate", provenance
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
             level, indicators, confidence = classify_user_message(content)
@@ -727,6 +774,7 @@ def classify_user_with_provider(
             }
             return level, indicators, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic", provenance
         adapter = _hosted_adapter(config)
+        build_started_at = time.perf_counter()
         prompt = (
             "You are a forensic classification assistant. "
             "Return only valid JSON with keys vulnerability_level, indicators_observed, reasoning, confidence. "
@@ -741,6 +789,7 @@ def classify_user_with_provider(
             temperature=config.temperature,
             prompt=prompt,
         )
+        _add_runtime_metric(config, "request_build_seconds", time.perf_counter() - build_started_at)
         key = _cache_key("user", config.model, request_payload)
         try:
             response = _fetch_or_replay_response(
@@ -756,10 +805,13 @@ def classify_user_with_provider(
                     _build_hosted_headers(adapter, api_key or ""),
                 ),
             )
+            normalize_started_at = time.perf_counter()
             generated = _extract_hosted_text(adapter, response)
             payload = _extract_json_object(generated)
             indicators = [str(item) for item in payload.get("indicators_observed", [])]
             reasoning = str(payload["reasoning"])
+            _add_runtime_metric(config, "response_normalization_seconds", time.perf_counter() - normalize_started_at)
+            calibration_started_at = time.perf_counter()
             level, indicators, confidence, reasoning, provenance = _calibrate_user_vulnerability(
                 content,
                 _normalize_vulnerability_level(payload.get("vulnerability_level"), indicators, reasoning),
@@ -767,6 +819,7 @@ def classify_user_with_provider(
                 _normalize_confidence(payload.get("confidence")),
                 reasoning,
             )
+            _add_runtime_metric(config, "calibration_seconds", time.perf_counter() - calibration_started_at)
             return level, indicators, confidence, reasoning, "hosted", config.model, adapter, provenance
         except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError) as error:
             if _should_bypass_provider_fallback(config, error):

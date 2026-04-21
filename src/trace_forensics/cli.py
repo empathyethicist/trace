@@ -352,6 +352,12 @@ def main() -> None:
         print(f"[CLASSIFY] Output: {result.classified_path}")
         print(f"[CLASSIFY] Total time: {round(perf_counter() - started_at, 4)}s")
         for key, value in result.timings.items():
+            if key == "llm_runtime_metrics":
+                metrics = value or {}
+                for metric_key, metric_value in metrics.items():
+                    suffix = "s" if "seconds" in metric_key else ""
+                    print(f"[CLASSIFY] llm_{metric_key}: {metric_value}{suffix}")
+                continue
             print(f"[CLASSIFY] {key}: {value}s")
         return
 

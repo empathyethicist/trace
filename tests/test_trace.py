@@ -496,6 +496,7 @@ class TraceTests(unittest.TestCase):
             classified_payload = read_json(root / "cases" / "CASE-1" / "classified_transcript.json")
             self.assertIn("performance_summary", classified_payload)
             self.assertIn("message_processing_seconds", classified_payload["performance_summary"])
+            self.assertIn("llm_runtime_metrics", classified_payload["performance_summary"])
 
     def test_manifest_sign_and_verify(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
