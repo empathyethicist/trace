@@ -7,24 +7,24 @@ from pathlib import Path
 import subprocess
 from unittest.mock import patch
 
-from trace.classify import classify_case
-from trace.classify import calibrate_user_vulnerability_from_state
-from trace.cli import apply_runtime_provider_overrides, evaluate_config, init_workspace
-from trace.ingest import (
+from trace_forensics.classify import classify_case
+from trace_forensics.classify import calibrate_user_vulnerability_from_state
+from trace_forensics.cli import apply_runtime_provider_overrides, evaluate_config, init_workspace
+from trace_forensics.ingest import (
     ingest_case,
     parse_axiom_json_records,
     parse_court_transcript_records,
     parse_text_records,
     parse_ufed_xml_records,
 )
-from trace.irr import cohen_kappa, compute_irr, import_second_coder, krippendorff_alpha_nominal, krippendorff_alpha_ordinal
-from trace.llm import _calibrate_user_vulnerability
-from trace.llm import _build_hosted_headers, _build_hosted_request_payload, _extract_hosted_text
-from trace.report import compute_findings, export_case_report, verify_evidence_package
-from trace.report import sign_manifest, verify_manifest_signature, verify_signing_certificate
-from trace.storage import read_json
-from trace.storage import write_json
-from trace.validation import (
+from trace_forensics.irr import cohen_kappa, compute_irr, import_second_coder, krippendorff_alpha_nominal, krippendorff_alpha_ordinal
+from trace_forensics.llm import _calibrate_user_vulnerability
+from trace_forensics.llm import _build_hosted_headers, _build_hosted_request_payload, _extract_hosted_text
+from trace_forensics.report import compute_findings, export_case_report, verify_evidence_package
+from trace_forensics.report import sign_manifest, verify_manifest_signature, verify_signing_certificate
+from trace_forensics.storage import read_json
+from trace_forensics.storage import write_json
+from trace_forensics.validation import (
     apply_comparison_assessments,
     benchmark_profile_settings,
     build_history_trend_summary,

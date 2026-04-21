@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from trace.storage import append_jsonl, ensure_dir, utc_now_iso, write_json
+from trace_forensics.storage import append_jsonl, ensure_dir, utc_now_iso, write_json
 
 
 PLAIN_TEXT_PATTERN = re.compile(

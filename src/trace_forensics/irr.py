@@ -4,7 +4,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Iterable
 
-from trace.storage import append_jsonl, read_json, utc_now_iso, write_json
+from trace_forensics.storage import append_jsonl, read_json, utc_now_iso, write_json
 
 
 def cohen_kappa(values_a: list[str], values_b: list[str]) -> float:

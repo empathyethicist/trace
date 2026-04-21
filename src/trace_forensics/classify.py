@@ -6,10 +6,10 @@ import os
 import sys
 from pathlib import Path
 
-from trace.llm import LLMConfig, classify_system_with_provider, classify_user_with_provider
-from trace.heuristics import classify_system_message, classify_user_message
-from trace.schemas import AI_ROLES, BEHAVIORAL_SCHEMA_VERSION, VULNERABILITY_LEVELS, VULNERABILITY_SCHEMA_VERSION
-from trace.storage import append_jsonl, read_json, utc_now_iso, write_json
+from trace_forensics.llm import LLMConfig, classify_system_with_provider, classify_user_with_provider
+from trace_forensics.heuristics import classify_system_message, classify_user_message
+from trace_forensics.schemas import AI_ROLES, BEHAVIORAL_SCHEMA_VERSION, VULNERABILITY_LEVELS, VULNERABILITY_SCHEMA_VERSION
+from trace_forensics.storage import append_jsonl, read_json, utc_now_iso, write_json
 
 
 @dataclass

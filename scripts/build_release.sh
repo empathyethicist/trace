@@ -13,7 +13,7 @@ fi
 PYTHONPATH="$ROOT_DIR/src" python3 -m unittest discover -s "$ROOT_DIR/tests" -v
 
 rm -rf "$ROOT_DIR/dist"
-python3 -m build --sdist --wheel
+python3 -m build --sdist --wheel --no-isolation
 
 (
   cd "$ROOT_DIR/dist"

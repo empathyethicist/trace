@@ -9,12 +9,12 @@ from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 
-from trace.heuristics import (
+from trace_forensics.heuristics import (
     classify_system_message,
     classify_user_message,
 )
-from trace.schemas import AI_ROLES, BEHAVIORAL_SCHEMA
-from trace.storage import append_jsonl, utc_now_iso
+from trace_forensics.schemas import AI_ROLES, BEHAVIORAL_SCHEMA
+from trace_forensics.storage import append_jsonl, utc_now_iso
 
 
 @dataclass

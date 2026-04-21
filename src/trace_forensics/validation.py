@@ -9,10 +9,10 @@ from pathlib import Path
 import subprocess
 from time import perf_counter
 
-from trace.classify import classify_case
-from trace.ingest import ingest_case
-from trace.report import compute_findings
-from trace.storage import read_json, utc_now_iso, write_json
+from trace_forensics.classify import classify_case
+from trace_forensics.ingest import ingest_case
+from trace_forensics.report import compute_findings
+from trace_forensics.storage import read_json, utc_now_iso, write_json
 
 
 @dataclass

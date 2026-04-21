@@ -7,8 +7,8 @@ import subprocess
 from collections import Counter
 from pathlib import Path
 
-from trace.prompts import prompt_template_files, prompt_template_manifest
-from trace.storage import append_jsonl, ensure_dir, read_json, utc_now_iso, write_json
+from trace_forensics.prompts import prompt_template_files, prompt_template_manifest
+from trace_forensics.storage import append_jsonl, ensure_dir, read_json, utc_now_iso, write_json
 
 
 def next_system_message(transcript: list[dict], start_index: int) -> dict | None:

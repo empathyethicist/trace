@@ -5,18 +5,18 @@ import os
 from pathlib import Path
 from urllib.parse import urlparse
 
-from trace import __version__
-from trace.classify import classify_case
-from trace.ingest import ingest_case
-from trace.irr import compute_irr, import_second_coder
-from trace.report import (
+from trace_forensics import __version__
+from trace_forensics.classify import classify_case
+from trace_forensics.ingest import ingest_case
+from trace_forensics.irr import compute_irr, import_second_coder
+from trace_forensics.report import (
     export_case_report,
     sign_manifest,
     verify_evidence_package,
     verify_manifest_signature,
     verify_signing_certificate,
 )
-from trace.validation import (
+from trace_forensics.validation import (
     apply_comparison_assessments,
     benchmark_profile_settings,
     build_history_trend_summary,

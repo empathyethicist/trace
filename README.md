@@ -91,7 +91,7 @@ It then exports an evidence package containing machine-readable artifacts, a Mar
 ## Repository layout
 
 ```text
-src/trace/
+src/trace_forensics/
   cli.py          Command-line interface
   ingest.py       Input parsing, normalization, hashing, custody logging
   classify.py     Classification pipeline, windows, review loop

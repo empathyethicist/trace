@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKSPACE_ROOT="${1:-$ROOT_DIR/demo-workspace}"
-TRACE_CMD="${TRACE_CMD:-python3 -m trace.cli}"
+TRACE_CMD="${TRACE_CMD:-python3 -m trace_forensics.cli}"
 
 mkdir -p "$WORKSPACE_ROOT"
 
