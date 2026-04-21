@@ -31,7 +31,7 @@ Repository = "https://github.com/empathyethicist/trace"
 Issues = "https://github.com/empathyethicist/trace/issues"
 
 [project.scripts]
-trace = "trace_forensics.cli:main"
+trace = "trace_forensics.cli:run_cli"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

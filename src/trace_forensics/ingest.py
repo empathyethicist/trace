@@ -51,6 +51,30 @@ def extract_text_like(value) -> str:
     return str(value).strip()
 
 
+def extract_speaker_like(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        for key in ("role", "speaker", "author", "sender", "name", "display_name", "type"):
+            extracted = extract_speaker_like(value.get(key))
+            if extracted:
+                return extracted
+        for nested in value.values():
+            extracted = extract_speaker_like(nested)
+            if extracted:
+                return extracted
+        return ""
+    if isinstance(value, list):
+        for item in value:
+            extracted = extract_speaker_like(item)
+            if extracted:
+                return extracted
+        return ""
+    return str(value).strip()
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -164,15 +188,28 @@ def parse_axiom_json_records(path: Path) -> list[dict]:
                 break
     if candidates is None:
         raise ValueError("AXIOM JSON parser could not find a transcript-like message array")
-    rows = []
+    flattened_candidates = []
     for item in candidates:
+        if isinstance(item, dict):
+            nested_messages = item.get("messages") or item.get("transcript") or item.get("items")
+            if isinstance(nested_messages, list):
+                flattened_candidates.extend(nested_messages)
+                continue
+        flattened_candidates.append(item)
+    rows = []
+    for item in flattened_candidates:
         content = (
             extract_text_like(item.get("content"))
             or extract_text_like(item.get("message"))
             or extract_text_like(item.get("body"))
             or ""
         )
-        speaker = item.get("speaker") or item.get("author") or item.get("sender") or ""
+        speaker = (
+            extract_speaker_like(item.get("speaker"))
+            or extract_speaker_like(item.get("author"))
+            or extract_speaker_like(item.get("sender"))
+            or ""
+        )
         timestamp = item.get("timestamp") or item.get("time") or item.get("created_at")
         rows.append(
             {

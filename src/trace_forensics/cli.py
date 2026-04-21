@@ -644,8 +644,12 @@ def main() -> None:
         print(__version__)
 
 
-if __name__ == "__main__":
+def run_cli() -> None:
     try:
         main()
     except (FileNotFoundError, ValueError) as error:
         raise SystemExit(f"[ERROR] {error}")
+
+
+if __name__ == "__main__":
+    run_cli()

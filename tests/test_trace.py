@@ -11,8 +11,10 @@ from unittest.mock import patch
 from trace_forensics.classify import classify_case
 from trace_forensics.classify import calibrate_user_vulnerability_from_state
 from trace_forensics.cli import apply_runtime_provider_overrides, evaluate_config, init_workspace, main
+from trace_forensics.cli import run_cli
 from trace_forensics.ingest import (
     extract_text_like,
+    extract_speaker_like,
     ingest_case,
     parse_json_records,
     parse_axiom_json_records,
@@ -122,6 +124,10 @@ class TraceTests(unittest.TestCase):
         self.assertEqual(extract_text_like({"text": "hello"}), "hello")
         self.assertEqual(extract_text_like({"body": {"text": "hello there"}}), "hello there")
         self.assertEqual(extract_text_like([{"text": "hello"}, {"text": "world"}]), "hello world")
+
+    def test_extract_speaker_like_handles_nested_structures(self) -> None:
+        self.assertEqual(extract_speaker_like({"role": "Assistant"}), "Assistant")
+        self.assertEqual(extract_speaker_like({"sender": {"name": "Human"}}), "Human")
 
     def test_csv_ingest_normalizes_speakers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -320,6 +326,48 @@ class TraceTests(unittest.TestCase):
             records = parse_axiom_json_records(path)
             self.assertEqual(records[0]["speaker"], "system")
             self.assertEqual(records[0]["content"], "hello")
+            self.assertEqual(records[1]["speaker"], "user")
+
+    def test_parse_axiom_chat_container_flattens_messages(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "axiom_chat_container.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "chats": [
+                            {
+                                "messages": [
+                                    {"speaker": "Assistant", "body": "hello"},
+                                    {"speaker": "Human", "body": "hi"},
+                                ]
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            records = parse_axiom_json_records(path)
+            self.assertEqual(len(records), 2)
+            self.assertEqual(records[0]["speaker"], "system")
+            self.assertEqual(records[0]["content"], "hello")
+            self.assertEqual(records[1]["speaker"], "user")
+
+    def test_parse_axiom_nested_speaker_objects(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "axiom_items_nested.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "items": [
+                            {"message": {"text": "hello"}, "author": {"role": "Assistant"}, "created_at": "2026-01-01T00:00:00Z"},
+                            {"message": {"text": "hi"}, "sender": {"role": "Human"}, "time": "2026-01-01T00:00:01Z"},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            records = parse_axiom_json_records(path)
+            self.assertEqual(records[0]["speaker"], "system")
             self.assertEqual(records[1]["speaker"], "user")
 
     def test_parse_ufed_nested_body_extracts_text(self) -> None:
@@ -908,6 +956,27 @@ commonName = supplied
                 with self.assertRaises(FileNotFoundError) as ctx:
                     main()
         self.assertIn("Ingest the case before report export", str(ctx.exception))
+
+    def test_run_cli_wraps_operator_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch(
+                "sys.argv",
+                [
+                    "trace",
+                    "report",
+                    "--case-id",
+                    "MISSING",
+                    "--examiner",
+                    "tester",
+                    "--output",
+                    str(Path(tmp) / "out"),
+                    "--root",
+                    str(Path(tmp) / "workspace"),
+                ],
+            ):
+                with self.assertRaises(SystemExit) as ctx:
+                    run_cli()
+        self.assertIn("[ERROR] Case MISSING does not exist", str(ctx.exception))
 
     def test_hosted_profile_alias_normalizes_to_mock_hosted(self) -> None:
         self.assertEqual(normalize_benchmark_profile("hosted"), "mock-hosted")

@@ -12,7 +12,7 @@ fi
 
 PYTHONPATH="$ROOT_DIR/src" python3 -m unittest discover -s "$ROOT_DIR/tests" -v
 
-rm -rf "$ROOT_DIR/dist"
+rm -rf "$ROOT_DIR/dist" "$ROOT_DIR/build" "$ROOT_DIR/src/trace_forensics.egg-info"
 python3 -m build --sdist --wheel --no-isolation
 
 (
