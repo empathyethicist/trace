@@ -77,7 +77,7 @@ def benchmark_profile_settings(profile: str) -> dict:
     if profile == "heuristic":
         return {}
     if profile == "hosted":
-        return {"provider": "mock", "model": "benchmark-mock-model", "window_size": 8}
+        return {"provider": "mock", "model": "benchmark-mock-model", "adapter": "mock", "window_size": 8}
     if profile == "live-hosted":
         api_key = os.environ.get("TRACE_HOSTED_API_KEY")
         if not api_key:

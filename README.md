@@ -296,6 +296,7 @@ The repository also includes replay-hardened live-provider example artifacts und
 - The `live-hosted` benchmark profile requires `TRACE_HOSTED_API_KEY` and `TRACE_HOSTED_BASE_URL`, and defaults to `provider-default` unless `TRACE_HOSTED_MODEL` is set.
 - Hosted execution currently supports the `openai-compatible` and `anthropic-messages` adapter contracts. See `docs/HOSTED_PROVIDER_SETUP.md`.
 - Hosted replay harness support is available through `trace classify --replay-dir ... --replay-mode record|replay-only` so provider outputs can be captured once and replayed locally.
+- Exported reports, manifests, and benchmark artifacts now preserve provider, model, and adapter metadata for later review.
 
 ## License
 

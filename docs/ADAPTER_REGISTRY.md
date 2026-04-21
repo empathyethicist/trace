@@ -64,6 +64,8 @@ TRACE supports per-run hosted overrides so a lab can:
 
 This is the intended operational pattern for partner evaluation and benchmark work.
 
+TRACE also preserves adapter selection in classified transcripts, exported report metadata, evidence-package manifests, and benchmark artifact settings so later review can distinguish provider behavior from adapter-contract behavior.
+
 ## Criteria for adding a new adapter
 
 A new adapter should be added only when:

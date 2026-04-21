@@ -249,6 +249,14 @@ class TraceTests(unittest.TestCase):
             self.assertTrue((package / "forensic_report.pdf").exists())
             self.assertTrue((package / "override_summary.json").exists())
             self.assertTrue(verify_evidence_package(package)["all_pass"])
+            report = read_json(package / "forensic_report.json")
+            manifest = read_json(package / "manifest.json")
+            model_config = read_json(package / "configuration" / "model_config.json")
+            self.assertEqual(report["execution_metadata"]["provider"], "heuristic")
+            self.assertEqual(report["execution_metadata"]["adapter"], "heuristic")
+            self.assertEqual(manifest["execution_metadata"]["provider"], "heuristic")
+            self.assertEqual(manifest["execution_metadata"]["adapter"], "heuristic")
+            self.assertEqual(model_config["adapter"], "heuristic")
 
     def test_manifest_sign_and_verify(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -341,6 +349,7 @@ commonName = supplied
             self.assertEqual(result.message_count, 8)
             classified = read_json(root / "cases" / "CASE-MOCK" / "classified_transcript.json")
             self.assertEqual(classified["llm_provider"], "mock")
+            self.assertEqual(classified["llm_adapter"], "mock")
             self.assertEqual(classified["window_size"], 4)
 
     def test_replay_only_uses_recorded_provider_outputs(self) -> None:
@@ -526,6 +535,11 @@ commonName = supplied
         self.assertEqual(settings["adapter"], "openai-compatible")
         self.assertEqual(settings["window_size"], 8)
 
+    def test_hosted_benchmark_profile_settings_include_adapter(self) -> None:
+        settings = benchmark_profile_settings("hosted")
+        self.assertEqual(settings["provider"], "mock")
+        self.assertEqual(settings["adapter"], "mock")
+
     def test_benchmark_artifact_export(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -591,6 +605,7 @@ commonName = supplied
             candidate = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "hosted", profile="hosted")
             comparison = apply_comparison_assessments(compare_benchmark_summaries(baseline, candidate))
             self.assertTrue(comparison["drift_free"])
+            self.assertEqual(comparison["candidate_profile_settings"]["adapter"], "mock")
             artifacts = write_comparison_artifacts(comparison, root / "compare_artifacts")
             self.assertTrue(artifacts["json"].exists())
             self.assertTrue(artifacts["markdown"].exists())

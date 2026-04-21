@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+import os
 import sys
 from pathlib import Path
 
@@ -126,6 +127,7 @@ def classify_case(
     mode: str = "heuristic",
     provider: str = "heuristic",
     model: str = "trace-heuristic-v1",
+    adapter: str | None = None,
     temperature: float = 0.0,
     window_size: int = 20,
     review_mode: str = "auto",
@@ -224,6 +226,15 @@ def classify_case(
         "classification_mode": "manual" if mode == "manual" else "heuristic_assisted_human_reviewed",
         "llm_provider": "none" if mode == "manual" else provider,
         "model_id": "manual-human-review" if mode == "manual" else model,
+        "llm_adapter": (
+            "none"
+            if mode == "manual"
+            else (
+                (adapter or os.environ.get("TRACE_HOSTED_ADAPTER", "openai-compatible"))
+                if provider == "hosted"
+                else ("ollama-generate" if provider == "ollama" else (adapter or provider))
+            )
+        ),
         "temperature": temperature,
         "window_size": window_size,
         "review_mode": review_mode,

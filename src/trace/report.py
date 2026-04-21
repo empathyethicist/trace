@@ -147,7 +147,14 @@ def hash_package_contents(package_dir: Path) -> str:
     return digest.hexdigest()
 
 
-def write_report_markdown(case_id: str, findings: dict, override_summary: dict, examiner_notes: str = "") -> str:
+def write_report_markdown(
+    case_id: str,
+    findings: dict,
+    override_summary: dict,
+    execution_metadata: dict | None = None,
+    examiner_notes: str = "",
+) -> str:
+    execution_metadata = execution_metadata or {}
     top_categories = findings["pattern_distribution"]["distribution"]
     if top_categories:
         category_summary = ", ".join(f"{key}: {value}" for key, value in sorted(top_categories.items()))
@@ -159,6 +166,9 @@ def write_report_markdown(case_id: str, findings: dict, override_summary: dict, 
         f"- Case ID: `{case_id}`\n"
         f"- Correlation Pairs Reviewed: `{len(findings['correlation_pairs'])}`\n"
         f"- Crisis Pairs Reviewed: `{len(findings['crisis_pairs'])}`\n"
+        f"- Provider: `{execution_metadata.get('provider', 'unknown')}`\n"
+        f"- Model: `{execution_metadata.get('model', 'unknown')}`\n"
+        f"- Adapter: `{execution_metadata.get('adapter', 'unknown')}`\n"
         "\n## Findings Summary\n\n"
         "| Metric | Value |\n"
         "|---|---|\n"
@@ -239,7 +249,15 @@ def _wrap_pdf_text(line: str, width: int = 88) -> list[str]:
     return wrapped
 
 
-def write_report_pdf(path: Path, case_id: str, findings: dict, override_summary: dict, examiner_notes: str = "") -> None:
+def write_report_pdf(
+    path: Path,
+    case_id: str,
+    findings: dict,
+    override_summary: dict,
+    execution_metadata: dict | None = None,
+    examiner_notes: str = "",
+) -> None:
+    execution_metadata = execution_metadata or {}
     top_categories = findings["pattern_distribution"]["distribution"]
     if top_categories:
         category_summary = ", ".join(f"{key}: {value}" for key, value in sorted(top_categories.items()))
@@ -251,6 +269,9 @@ def write_report_pdf(path: Path, case_id: str, findings: dict, override_summary:
         f"Case ID: {case_id}",
         f"Correlation Pairs Reviewed: {len(findings['correlation_pairs'])}",
         f"Crisis Pairs Reviewed: {len(findings['crisis_pairs'])}",
+        f"Provider: {execution_metadata.get('provider', 'unknown')}",
+        f"Model: {execution_metadata.get('model', 'unknown')}",
+        f"Adapter: {execution_metadata.get('adapter', 'unknown')}",
         "Findings Summary",
         f"Inappropriate Response Rate: {findings['inappropriate_response_rate']}%",
         f"Crisis Failure Rate: {findings['crisis_failure_rate']}%",
@@ -499,6 +520,11 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, exam
     classified = read_json(case_dir / "classified_transcript.json")
     findings = compute_findings(classified["transcript"])
     override_summary = compute_override_summary(classified["transcript"])
+    execution_metadata = {
+        "provider": classified.get("llm_provider", "heuristic"),
+        "model": classified.get("model_id", "trace-heuristic-v1"),
+        "adapter": classified.get("llm_adapter", "none"),
+    }
     irr_stats_path = case_dir / "irr_statistics.json"
     irr_stats = read_json(irr_stats_path) if irr_stats_path.exists() else {}
 
@@ -510,15 +536,16 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, exam
     write_json(package_dir / "chain_of_custody.json", read_json(case_dir / "chain_of_custody.json"))
     write_json(package_dir / "irr_statistics.json", irr_stats)
     (package_dir / "forensic_report.md").write_text(
-        write_report_markdown(source["case_id"], findings, override_summary, examiner_notes), encoding="utf-8"
+        write_report_markdown(source["case_id"], findings, override_summary, execution_metadata, examiner_notes), encoding="utf-8"
     )
-    write_report_pdf(package_dir / "forensic_report.pdf", source["case_id"], findings, override_summary, examiner_notes)
+    write_report_pdf(package_dir / "forensic_report.pdf", source["case_id"], findings, override_summary, execution_metadata, examiner_notes)
     write_json(
         package_dir / "forensic_report.json",
         {
             "case_id": source["case_id"],
             "findings": findings,
             "override_summary": override_summary,
+            "execution_metadata": execution_metadata,
             "examiner_notes": examiner_notes,
             "generated_at": utc_now_iso(),
         },
@@ -534,8 +561,9 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, exam
     write_json(
         package_dir / "configuration" / "model_config.json",
         {
-            "provider": classified.get("llm_provider", "heuristic"),
-            "model": classified.get("model_id", "trace-heuristic-v1"),
+            "provider": execution_metadata["provider"],
+            "model": execution_metadata["model"],
+            "adapter": execution_metadata["adapter"],
             "temperature": classified.get("temperature", 0.0),
         },
     )
@@ -567,6 +595,7 @@ def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, exam
         "classified_hash_sha256": hash_path(package_dir / "classified_transcript.json"),
         "package_hash_sha256": "",
         "classification_mode": classified["classification_mode"],
+        "execution_metadata": execution_metadata,
         "prompt_template_versions": prompt_template_manifest(),
         "schema_versions": {
             "behavioral": "zhang_2025_v1",
