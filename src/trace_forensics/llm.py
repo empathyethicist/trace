@@ -4,11 +4,13 @@ import json
 import os
 import socket
 import time
+import http.client
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
+from urllib.parse import urlparse
 
 from trace_forensics.heuristics import (
     classify_system_message,
@@ -32,6 +34,8 @@ class LLMConfig:
     retry_backoff_seconds: float = 1.0
     runtime_metrics: dict | None = None
     provider_circuit_reason: str | None = None
+    hosted_connection: http.client.HTTPConnection | None = None
+    hosted_connection_target: tuple[str, str, int] | None = None
 
 
 SUPPORTED_HOSTED_ADAPTERS = {"openai-compatible", "anthropic-messages"}
@@ -48,6 +52,8 @@ def _ensure_runtime_metrics(config: LLMConfig) -> dict:
             "provider_failures": 0,
             "fast_path_skips": 0,
             "provider_short_circuits": 0,
+            "provider_connection_reuses": 0,
+            "provider_connection_resets": 0,
             "provider_backoff_seconds": 0.0,
             "provider_wait_seconds": 0.0,
             "request_build_seconds": 0.0,
@@ -90,6 +96,65 @@ def _json_request_with_headers(url: str, payload: dict, headers: dict[str, str])
     )
     with urllib.request.urlopen(request, timeout=90) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def _close_hosted_connection(config: LLMConfig) -> None:
+    connection = config.hosted_connection
+    if connection is not None:
+        try:
+            connection.close()
+        except Exception:
+            pass
+    config.hosted_connection = None
+    config.hosted_connection_target = None
+
+
+def _json_request_with_headers_reused(
+    config: LLMConfig,
+    url: str,
+    payload: dict,
+    headers: dict[str, str],
+) -> dict:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError(f"Invalid hosted URL: {url}")
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    target = (parsed.scheme, parsed.hostname, port)
+    path = parsed.path or "/"
+    if parsed.query:
+        path = f"{path}?{parsed.query}"
+
+    connection = config.hosted_connection
+    if connection is not None and config.hosted_connection_target == target:
+        _add_runtime_metric(config, "provider_connection_reuses")
+    else:
+        _close_hosted_connection(config)
+        connection_cls = http.client.HTTPSConnection if parsed.scheme == "https" else http.client.HTTPConnection
+        connection = connection_cls(parsed.hostname, port, timeout=90)
+        config.hosted_connection = connection
+        config.hosted_connection_target = target
+
+    encoded = json.dumps(payload).encode("utf-8")
+    request_headers = dict(headers)
+    request_headers.setdefault("Content-Type", "application/json")
+    request_headers["Content-Length"] = str(len(encoded))
+
+    try:
+        connection.request("POST", path, body=encoded, headers=request_headers)
+        response = connection.getresponse()
+        raw = response.read()
+        if response.status >= 400:
+            _close_hosted_connection(config)
+            raise urllib.error.HTTPError(url, response.status, response.reason, response.headers, None)
+        return json.loads(raw.decode("utf-8"))
+    except OSError as error:
+        _add_runtime_metric(config, "provider_connection_resets")
+        _close_hosted_connection(config)
+        raise urllib.error.URLError(error) from error
+    except Exception:
+        _add_runtime_metric(config, "provider_connection_resets")
+        _close_hosted_connection(config)
+        raise
 
 
 def _cache_key(kind: str, model: str, payload: dict) -> str:
@@ -701,7 +766,8 @@ def classify_system_with_provider(
                 provider="hosted",
                 model=config.model,
                 request_payload=request_payload,
-                fetcher=lambda: _json_request_with_headers(
+                fetcher=lambda: _json_request_with_headers_reused(
+                    config,
                     _hosted_base_url(),
                     request_payload,
                     _build_hosted_headers(adapter, api_key or ""),
@@ -977,7 +1043,8 @@ def classify_user_with_provider(
                 provider="hosted",
                 model=config.model,
                 request_payload=request_payload,
-                fetcher=lambda: _json_request_with_headers(
+                fetcher=lambda: _json_request_with_headers_reused(
+                    config,
                     _hosted_base_url(),
                     request_payload,
                     _build_hosted_headers(adapter, api_key or ""),

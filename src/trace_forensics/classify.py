@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from time import perf_counter
 
-from trace_forensics.llm import LLMConfig, classify_system_with_provider, classify_user_with_provider
+from trace_forensics.llm import LLMConfig, _close_hosted_connection, classify_system_with_provider, classify_user_with_provider
 from trace_forensics.heuristics import (
     classify_system_message,
     classify_user_message,
@@ -194,120 +194,123 @@ def classify_case(
     message_processing_seconds = 0.0
     audit_log_seconds = 0.0
 
-    for index, message in enumerate(transcript):
-        message_started_at = perf_counter()
-        record = dict(message)
-        state_summary = build_state_summary(classified, window_size=window_size) if classified else "Current vulnerability level: Baseline; behavioral trend: no_harmful_behavior."
-        window_messages = build_window(transcript, index, window_size)
-        if record["speaker"] == "user":
-            (
-                level,
-                indicators,
-                confidence,
-                reasoning,
-                actual_provider,
-                actual_model,
-                actual_adapter,
-                calibration_provenance,
-            ) = classify_user_with_provider(
-                record["content"],
-                state_summary,
-                window_messages,
-                config,
-            )
-            if provider in {"hosted", "ollama"}:
-                level, confidence, reasoning, state_rules = calibrate_user_vulnerability_from_state(
-                    record["content"],
+    try:
+        for index, message in enumerate(transcript):
+            message_started_at = perf_counter()
+            record = dict(message)
+            state_summary = build_state_summary(classified, window_size=window_size) if classified else "Current vulnerability level: Baseline; behavioral trend: no_harmful_behavior."
+            window_messages = build_window(transcript, index, window_size)
+            if record["speaker"] == "user":
+                (
                     level,
                     indicators,
                     confidence,
                     reasoning,
-                    prior_user_vulnerabilities,
+                    actual_provider,
+                    actual_model,
+                    actual_adapter,
+                    calibration_provenance,
+                ) = classify_user_with_provider(
+                    record["content"],
+                    state_summary,
+                    window_messages,
+                    config,
                 )
-                calibration_provenance["applied_rules"].extend(
-                    rule for rule in state_rules if rule not in calibration_provenance["applied_rules"]
+                if provider in {"hosted", "ollama"}:
+                    level, confidence, reasoning, state_rules = calibrate_user_vulnerability_from_state(
+                        record["content"],
+                        level,
+                        indicators,
+                        confidence,
+                        reasoning,
+                        prior_user_vulnerabilities,
+                    )
+                    calibration_provenance["applied_rules"].extend(
+                        rule for rule in state_rules if rule not in calibration_provenance["applied_rules"]
+                    )
+                calibration_provenance["final_level"] = level
+                record["vulnerability"] = level
+                record["classification"] = {
+                    "schema_version": VULNERABILITY_SCHEMA_VERSION,
+                    "type": "user_vulnerability",
+                    "vulnerability_level": level,
+                    "indicators_observed": indicators,
+                    "reasoning": reasoning,
+                    "confidence": confidence,
+                    "requires_review": confidence < confidence_threshold,
+                    "decision": "pending",
+                    "override_rationale": "",
+                    "calibration_provenance": calibration_provenance,
+                }
+                record["classification"] = review_classification(record, review_mode)
+                record["classification_provider"] = actual_provider
+                record["classification_model"] = actual_model
+                record["classification_adapter"] = actual_adapter
+                current_user_vulnerability = level
+                prior_user_vulnerabilities.append(level)
+            else:
+                (
+                    category,
+                    subcategory,
+                    role,
+                    confidence,
+                    reasoning,
+                    actual_provider,
+                    actual_model,
+                    actual_adapter,
+                ) = classify_system_with_provider(
+                    record["content"],
+                    current_user_vulnerability,
+                    state_summary,
+                    window_messages,
+                    config,
                 )
-            calibration_provenance["final_level"] = level
-            record["vulnerability"] = level
-            record["classification"] = {
-                "schema_version": VULNERABILITY_SCHEMA_VERSION,
-                "type": "user_vulnerability",
-                "vulnerability_level": level,
-                "indicators_observed": indicators,
-                "reasoning": reasoning,
-                "confidence": confidence,
-                "requires_review": confidence < confidence_threshold,
-                "decision": "pending",
-                "override_rationale": "",
-                "calibration_provenance": calibration_provenance,
-            }
-            record["classification"] = review_classification(record, review_mode)
-            record["classification_provider"] = actual_provider
-            record["classification_model"] = actual_model
-            record["classification_adapter"] = actual_adapter
-            current_user_vulnerability = level
-            prior_user_vulnerabilities.append(level)
-        else:
-            (
-                category,
-                subcategory,
-                role,
-                confidence,
-                reasoning,
-                actual_provider,
-                actual_model,
-                actual_adapter,
-            ) = classify_system_with_provider(
-                record["content"],
-                current_user_vulnerability,
-                state_summary,
-                window_messages,
-                config,
+                record["classification"] = {
+                    "schema_version": BEHAVIORAL_SCHEMA_VERSION,
+                    "type": "system_behavioral",
+                    "behavioral_category": category,
+                    "behavioral_subcategory": subcategory,
+                    "ai_role": role if role in AI_ROLES else "none",
+                    "reasoning": reasoning,
+                    "confidence": confidence,
+                    "requires_review": confidence < confidence_threshold,
+                    "decision": "pending",
+                    "override_rationale": "",
+                }
+                record["classification"] = review_classification(record, review_mode)
+                record["classification_provider"] = actual_provider
+                record["classification_model"] = actual_model
+                record["classification_adapter"] = actual_adapter
+            record["state_summary"] = build_state_summary(classified + [record], window_size=window_size)
+            summary_provider = "heuristic" if actual_provider == "heuristic-fast-path" else actual_provider
+            summary_adapter = "heuristic" if actual_adapter == "heuristic" else actual_adapter
+            provider_history.append(summary_provider)
+            model_history.append(actual_model)
+            adapter_history.append(summary_adapter)
+            classified.append(record)
+            message_processing_seconds += perf_counter() - message_started_at
+            audit_started_at = perf_counter()
+            append_jsonl(
+                case_dir / "audit_log.jsonl",
+                {
+                    "timestamp": utc_now_iso(),
+                    "event": "classification_recorded",
+                    "case_id": source["case_id"],
+                    "examiner_id": examiner_id,
+                    "message_id": record["id"],
+                    "speaker": record["speaker"],
+                    "decision": record["classification"]["decision"],
+                    "requires_review": record["classification"]["requires_review"],
+                    "requested_provider": provider,
+                    "requested_model": model,
+                    "provider": actual_provider,
+                    "model": actual_model,
+                    "adapter": actual_adapter,
+                },
             )
-            record["classification"] = {
-                "schema_version": BEHAVIORAL_SCHEMA_VERSION,
-                "type": "system_behavioral",
-                "behavioral_category": category,
-                "behavioral_subcategory": subcategory,
-                "ai_role": role if role in AI_ROLES else "none",
-                "reasoning": reasoning,
-                "confidence": confidence,
-                "requires_review": confidence < confidence_threshold,
-                "decision": "pending",
-                "override_rationale": "",
-            }
-            record["classification"] = review_classification(record, review_mode)
-            record["classification_provider"] = actual_provider
-            record["classification_model"] = actual_model
-            record["classification_adapter"] = actual_adapter
-        record["state_summary"] = build_state_summary(classified + [record], window_size=window_size)
-        summary_provider = "heuristic" if actual_provider == "heuristic-fast-path" else actual_provider
-        summary_adapter = "heuristic" if actual_adapter == "heuristic" else actual_adapter
-        provider_history.append(summary_provider)
-        model_history.append(actual_model)
-        adapter_history.append(summary_adapter)
-        classified.append(record)
-        message_processing_seconds += perf_counter() - message_started_at
-        audit_started_at = perf_counter()
-        append_jsonl(
-            case_dir / "audit_log.jsonl",
-            {
-                "timestamp": utc_now_iso(),
-                "event": "classification_recorded",
-                "case_id": source["case_id"],
-                "examiner_id": examiner_id,
-                "message_id": record["id"],
-                "speaker": record["speaker"],
-                "decision": record["classification"]["decision"],
-                "requires_review": record["classification"]["requires_review"],
-                "requested_provider": provider,
-                "requested_model": model,
-                "provider": actual_provider,
-                "model": actual_model,
-                "adapter": actual_adapter,
-            },
-        )
-        audit_log_seconds += perf_counter() - audit_started_at
+            audit_log_seconds += perf_counter() - audit_started_at
+    finally:
+        _close_hosted_connection(config)
 
     provider_counts = Counter(provider_history)
     model_counts = Counter(model_history)

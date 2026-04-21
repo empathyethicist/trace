@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
 import subprocess
 from unittest.mock import patch
@@ -26,6 +28,7 @@ from trace_forensics.irr import cohen_kappa, compute_irr, import_second_coder, k
 from trace_forensics.llm import (
     LLMConfig,
     _calibrate_user_vulnerability,
+    _json_request_with_headers_reused,
     _read_replay_response,
     _request_with_retry,
     classify_system_with_provider,
@@ -934,6 +937,75 @@ commonName = supplied
         self.assertEqual(config.runtime_metrics["provider_failures"], 1)
         self.assertEqual(config.runtime_metrics["provider_backoff_seconds"], 0.0)
         sleep_mock.assert_not_called()
+
+    def test_hosted_request_reuses_connection_for_same_target(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model")
+        created = {"count": 0}
+
+        class FakeResponse:
+            status = 200
+            reason = "OK"
+            headers = {}
+
+            def read(self):
+                return json.dumps({"ok": True}).encode("utf-8")
+
+        class FakeConnection:
+            def __init__(self, host, port, timeout):
+                created["count"] += 1
+                self.requests = []
+
+            def request(self, method, path, body=None, headers=None):
+                self.requests.append((method, path, body, headers))
+
+            def getresponse(self):
+                return FakeResponse()
+
+            def close(self):
+                return None
+
+        with patch("trace_forensics.llm.http.client.HTTPSConnection", FakeConnection):
+            first = _json_request_with_headers_reused(
+                config,
+                "https://provider.example/v1/chat/completions",
+                {"a": 1},
+                {"Authorization": "Bearer token"},
+            )
+            second = _json_request_with_headers_reused(
+                config,
+                "https://provider.example/v1/chat/completions",
+                {"b": 2},
+                {"Authorization": "Bearer token"},
+            )
+
+        self.assertEqual(first, {"ok": True})
+        self.assertEqual(second, {"ok": True})
+        self.assertEqual(created["count"], 1)
+        self.assertEqual(config.runtime_metrics["provider_connection_reuses"], 1)
+
+    def test_hosted_request_wraps_socket_errors_as_url_errors(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model")
+
+        class FailingConnection:
+            def __init__(self, host, port, timeout):
+                pass
+
+            def request(self, method, path, body=None, headers=None):
+                raise socket.gaierror(-3, "Temporary failure in name resolution")
+
+            def close(self):
+                return None
+
+        with patch("trace_forensics.llm.http.client.HTTPSConnection", FailingConnection):
+            with self.assertRaises(urllib.error.URLError):
+                _json_request_with_headers_reused(
+                    config,
+                    "https://provider.example/v1/chat/completions",
+                    {"a": 1},
+                    {"Authorization": "Bearer token"},
+                )
+
+        self.assertEqual(config.runtime_metrics["provider_connection_resets"], 1)
 
     def test_hosted_provider_circuit_short_circuits_following_messages(self) -> None:
         config = LLMConfig(provider="hosted", model="hosted-model")
