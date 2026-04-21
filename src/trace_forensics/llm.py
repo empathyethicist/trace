@@ -626,6 +626,13 @@ def classify_system_with_provider(
                 and heuristic_role == "enabler"
                 and heuristic_confidence >= 0.85
             )
+            or (
+                prior_user_vulnerability >= 3
+                and heuristic_category == "relational_transgression"
+                and heuristic_subcategory == "disregard"
+                and heuristic_role == "enabler"
+                and heuristic_confidence >= 0.65
+            )
         )
     ):
         _add_runtime_metric(config, "fast_path_skips")
