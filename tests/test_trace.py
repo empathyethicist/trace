@@ -34,6 +34,7 @@ from trace_forensics.validation import (
     benchmark_profile_settings,
     build_history_trend_summary,
     compare_benchmark_summaries,
+    hash_file,
     normalize_benchmark_profile,
     run_benchmark_suite,
     run_validation,
@@ -1191,6 +1192,29 @@ commonName = supplied
             self.assertTrue(signed["manifest"].exists())
             self.assertTrue(signed["signature"].exists())
             verification = verify_artifact_bundle(root / "artifacts", public_key)
+            self.assertTrue(verification["all_pass"])
+
+    def test_signed_benchmark_artifact_bundle_without_explicit_public_key(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            summary = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "bench")
+            write_benchmark_artifacts(summary, root / "artifacts")
+            _, _, private_key, public_key, signing_cert = self._build_ca_environment(root, "TRACE Benchmark Signer")
+            signed = sign_artifact_bundle(
+                root / "artifacts",
+                private_key,
+                signer_label="TRACE artifact signer",
+                signing_certificate_path=signing_cert,
+            )
+            derived_public_key = root / "artifacts" / "artifact_signer_public.pem"
+            self.assertTrue(signed["manifest"].exists())
+            self.assertTrue(signed["signature"].exists())
+            self.assertTrue(derived_public_key.exists())
+            trust = read_json(signed["trust"])
+            self.assertEqual(trust["signer_label"], "TRACE artifact signer")
+            self.assertEqual(trust["public_key_path"], "artifact_signer_public.pem")
+            self.assertEqual(trust["public_key_sha256"], hash_file(derived_public_key))
+            verification = verify_artifact_bundle(root / "artifacts", derived_public_key)
             self.assertTrue(verification["all_pass"])
 
     def test_long_transcript_pipeline(self) -> None:

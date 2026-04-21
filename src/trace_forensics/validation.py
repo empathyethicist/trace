@@ -631,14 +631,31 @@ def write_history_trend_summary(history_dir: Path, prefix: str) -> dict:
 def sign_artifact_bundle(
     output_dir: Path,
     private_key_path: Path,
-    public_key_path: Path,
-    signer_label: str,
+    public_key_path: Path | None = None,
+    signer_label: str = "TRACE artifact signer",
     signing_certificate_path: Path | None = None,
     certificate_chain_paths: list[Path] | None = None,
 ) -> dict:
     manifest_path = output_dir / "artifact_manifest.json"
     signature_path = output_dir / "artifact_manifest.sig"
     trust_path = output_dir / "artifact_trust.json"
+    effective_public_key_path = public_key_path
+    if effective_public_key_path is None:
+        effective_public_key_path = output_dir / "artifact_signer_public.pem"
+        subprocess.run(
+            [
+                "openssl",
+                "pkey",
+                "-in",
+                str(private_key_path),
+                "-pubout",
+                "-out",
+                str(effective_public_key_path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
     files = []
     for path in sorted(p for p in output_dir.iterdir() if p.is_file() and p.name not in {manifest_path.name, signature_path.name, trust_path.name}):
         files.append({"path": path.name, "sha256": hash_file(path)})
@@ -659,14 +676,14 @@ def sign_artifact_bundle(
     )
     trust = {
         "signer_label": signer_label,
-        "public_key_path": public_key_path.name,
-        "public_key_sha256": hash_file(public_key_path),
+        "public_key_path": effective_public_key_path.name,
+        "public_key_sha256": hash_file(effective_public_key_path),
         "signing_certificate_path": signing_certificate_path.name if signing_certificate_path else None,
         "certificate_chain": [],
     }
-    target_public_key = output_dir / public_key_path.name
-    if public_key_path.resolve() != target_public_key.resolve():
-        target_public_key.write_bytes(public_key_path.read_bytes())
+    target_public_key = output_dir / effective_public_key_path.name
+    if effective_public_key_path.resolve() != target_public_key.resolve():
+        target_public_key.write_bytes(effective_public_key_path.read_bytes())
     if signing_certificate_path and signing_certificate_path.exists():
         target_cert = output_dir / signing_certificate_path.name
         if signing_certificate_path.resolve() != target_cert.resolve():

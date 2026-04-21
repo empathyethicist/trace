@@ -429,16 +429,17 @@ def main() -> None:
             artifacts = write_benchmark_artifacts(summary, Path(args.output_dir))
             print(f"[BENCHMARK] JSON artifact: {artifacts['json']}")
             print(f"[BENCHMARK] Markdown artifact: {artifacts['markdown']}")
-            if args.sign_private_key and args.sign_public_key:
+            if args.sign_private_key:
                 signed = sign_artifact_bundle(
                     Path(args.output_dir),
                     Path(args.sign_private_key),
-                    Path(args.sign_public_key),
+                    Path(args.sign_public_key) if args.sign_public_key else None,
                     args.signer_label,
                     Path(args.signing_certificate) if args.signing_certificate else None,
                     [Path(item) for item in args.certificate_chain],
                 )
-                verified = verify_artifact_bundle(Path(args.output_dir), Path(args.sign_public_key))
+                verification_key = Path(args.sign_public_key) if args.sign_public_key else signed["trust"].parent / "artifact_signer_public.pem"
+                verified = verify_artifact_bundle(Path(args.output_dir), verification_key)
                 print(f"[BENCHMARK] Artifact manifest: {signed['manifest']}")
                 print(f"[BENCHMARK] Artifact signature: {signed['signature']}")
                 print(f"[BENCHMARK] Artifact trust: {signed['trust']}")
@@ -484,16 +485,17 @@ def main() -> None:
             artifacts = write_benchmark_artifacts(summary, Path(args.output_dir))
             print(f"[BENCHMARK-REPLAY] JSON artifact: {artifacts['json']}")
             print(f"[BENCHMARK-REPLAY] Markdown artifact: {artifacts['markdown']}")
-            if args.sign_private_key and args.sign_public_key:
+            if args.sign_private_key:
                 signed = sign_artifact_bundle(
                     Path(args.output_dir),
                     Path(args.sign_private_key),
-                    Path(args.sign_public_key),
+                    Path(args.sign_public_key) if args.sign_public_key else None,
                     args.signer_label,
                     Path(args.signing_certificate) if args.signing_certificate else None,
                     [Path(item) for item in args.certificate_chain],
                 )
-                verified = verify_artifact_bundle(Path(args.output_dir), Path(args.sign_public_key))
+                verification_key = Path(args.sign_public_key) if args.sign_public_key else signed["trust"].parent / "artifact_signer_public.pem"
+                verified = verify_artifact_bundle(Path(args.output_dir), verification_key)
                 print(f"[BENCHMARK-REPLAY] Artifact manifest: {signed['manifest']}")
                 print(f"[BENCHMARK-REPLAY] Artifact signature: {signed['signature']}")
                 print(f"[BENCHMARK-REPLAY] Artifact trust: {signed['trust']}")
@@ -552,16 +554,17 @@ def main() -> None:
             artifacts = write_comparison_artifacts(comparison, Path(args.output_dir))
             print(f"[BENCHMARK-COMPARE] JSON artifact: {artifacts['json']}")
             print(f"[BENCHMARK-COMPARE] Markdown artifact: {artifacts['markdown']}")
-            if args.sign_private_key and args.sign_public_key:
+            if args.sign_private_key:
                 signed = sign_artifact_bundle(
                     Path(args.output_dir),
                     Path(args.sign_private_key),
-                    Path(args.sign_public_key),
+                    Path(args.sign_public_key) if args.sign_public_key else None,
                     args.signer_label,
                     Path(args.signing_certificate) if args.signing_certificate else None,
                     [Path(item) for item in args.certificate_chain],
                 )
-                verified = verify_artifact_bundle(Path(args.output_dir), Path(args.sign_public_key))
+                verification_key = Path(args.sign_public_key) if args.sign_public_key else signed["trust"].parent / "artifact_signer_public.pem"
+                verified = verify_artifact_bundle(Path(args.output_dir), verification_key)
                 print(f"[BENCHMARK-COMPARE] Artifact manifest: {signed['manifest']}")
                 print(f"[BENCHMARK-COMPARE] Artifact signature: {signed['signature']}")
                 print(f"[BENCHMARK-COMPARE] Artifact trust: {signed['trust']}")
