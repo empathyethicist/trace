@@ -433,6 +433,13 @@ def verify_evidence_package(package_dir: Path) -> dict:
     return checks
 
 
+def _read_trust_metadata_or_raise(trust_metadata_path: Path) -> dict:
+    try:
+        return read_json(trust_metadata_path)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Trust metadata file {trust_metadata_path} contains malformed JSON.") from error
+
+
 def verify_manifest_signature(package_dir: Path, public_key_path: Path) -> dict:
     signature_path = package_dir / "manifest.sig"
     trust_metadata_path = package_dir / "trust_metadata.json"
@@ -463,7 +470,7 @@ def verify_manifest_signature(package_dir: Path, public_key_path: Path) -> dict:
     result["stdout"] = completed.stdout.strip()
     result["stderr"] = completed.stderr.strip()
     if trust_metadata_path.exists():
-        trust = read_json(trust_metadata_path)
+        trust = _read_trust_metadata_or_raise(trust_metadata_path)
         result["trust_public_key_match"] = trust.get("public_key_sha256") == hash_path(public_key_path)
         result["signer_label"] = trust.get("signer_label")
         chain_entries = trust.get("certificate_chain", [])
@@ -510,7 +517,7 @@ def verify_signing_certificate(
     if not trust_metadata_path.exists():
         result["all_pass"] = False
         return result
-    trust = read_json(trust_metadata_path)
+    trust = _read_trust_metadata_or_raise(trust_metadata_path)
     signing_certificate = trust.get("signing_certificate_path")
     if not signing_certificate:
         result["all_pass"] = False

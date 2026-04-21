@@ -388,6 +388,19 @@ class TraceTests(unittest.TestCase):
             self.assertEqual(trust_metadata["public_key_path"], "manifest_signer_public.pem")
             self.assertTrue(verify_evidence_package(package)["all_pass"])
 
+    def test_verify_signature_rejects_malformed_trust_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ingest_case(FIXTURE, "CASE-BAD-TRUST", "tester", "json", root / "cases")
+            classify_case(root / "cases" / "CASE-BAD-TRUST", "tester")
+            package = export_case_report(root / "cases" / "CASE-BAD-TRUST", root / "out", "tester")
+            _, _, private_key, public_key, signing_cert = self._build_ca_environment(root, "TRACE Bad Trust Signer")
+            sign_manifest(package, private_key, public_key, "TRACE bad trust signer", [], signing_cert)
+            (package / "trust_metadata.json").write_text("not-json\n", encoding="utf-8")
+            with self.assertRaises(ValueError) as ctx:
+                verify_manifest_signature(package, public_key)
+            self.assertIn("contains malformed JSON", str(ctx.exception))
+
     def test_revoked_certificate_fails_verification(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
