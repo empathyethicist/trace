@@ -327,7 +327,7 @@ def main() -> None:
         apply_runtime_provider_overrides(args)
         model = args.model
         if not args.manual and args.provider == "hosted":
-            model = args.hosted_model or model
+            model = args.hosted_model or os.environ.get("TRACE_HOSTED_MODEL") or model
             if model == "trace-heuristic-v1":
                 model = "provider-default"
         result = classify_case(

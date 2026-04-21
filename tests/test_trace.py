@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from trace_forensics.classify import classify_case
 from trace_forensics.classify import calibrate_user_vulnerability_from_state
-from trace_forensics.cli import apply_runtime_provider_overrides, evaluate_config, init_workspace
+from trace_forensics.cli import apply_runtime_provider_overrides, evaluate_config, init_workspace, main
 from trace_forensics.ingest import (
     ingest_case,
     parse_axiom_json_records,
@@ -169,6 +169,36 @@ class TraceTests(unittest.TestCase):
             self.assertEqual(os.environ["TRACE_HOSTED_BASE_URL"], "https://provider.example/v1/messages")
             self.assertEqual(os.environ["TRACE_HOSTED_MODEL"], "override-model")
             self.assertEqual(os.environ["TRACE_HOSTED_ADAPTER"], "anthropic-messages")
+
+    def test_classify_uses_hosted_model_from_env_when_flag_not_set(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {
+                "TRACE_HOSTED_API_KEY": "test-key",
+                "TRACE_HOSTED_BASE_URL": "https://provider.example/v1/chat/completions",
+                "TRACE_HOSTED_MODEL": "env-model",
+                "TRACE_HOSTED_ADAPTER": "openai-compatible",
+            },
+            clear=True,
+        ):
+            with patch("trace_forensics.cli.classify_case") as mock_classify:
+                mock_classify.return_value.message_count = 0
+                mock_classify.return_value.classified_path = Path("/tmp/classified.json")
+                with patch(
+                    "sys.argv",
+                    [
+                        "trace",
+                        "classify",
+                        "--case-id",
+                        "CASE-001",
+                        "--provider",
+                        "hosted",
+                        "--root",
+                        "/tmp/workspace",
+                    ],
+                ):
+                    main()
+        self.assertEqual(mock_classify.call_args.kwargs["model"], "env-model")
 
     def test_init_workspace_creates_expected_layout(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
