@@ -79,7 +79,7 @@ def normalize_benchmark_profile(profile: str) -> str:
     return profile
 
 
-def benchmark_profile_settings(profile: str) -> dict:
+def benchmark_profile_settings(profile: str, replay_mode: str = "off") -> dict:
     profile = normalize_benchmark_profile(profile)
     if profile == "heuristic":
         return {}
@@ -87,7 +87,7 @@ def benchmark_profile_settings(profile: str) -> dict:
         return {"provider": "mock", "model": "benchmark-mock-model", "adapter": "mock", "window_size": 8}
     if profile == "live-hosted":
         api_key = os.environ.get("TRACE_HOSTED_API_KEY")
-        if not api_key:
+        if not api_key and replay_mode != "replay-only":
             raise ValueError("TRACE_HOSTED_API_KEY is required for the live-hosted benchmark profile")
         return {
             "provider": "hosted",
@@ -111,7 +111,7 @@ def run_validation(
     case_id = reference["case_id"]
     case_root = working_root / "cases"
     ingest_case(reference_path, case_id, "validator", "json", case_root)
-    classify_kwargs = benchmark_profile_settings(profile)
+    classify_kwargs = benchmark_profile_settings(profile, replay_mode=replay_mode)
     classify_case(
         case_root / case_id,
         "validator",
@@ -724,7 +724,7 @@ def run_benchmark_suite(
     replay_mode: str = "off",
 ) -> dict:
     profile = normalize_benchmark_profile(profile)
-    settings = benchmark_profile_settings(profile)
+    settings = benchmark_profile_settings(profile, replay_mode=replay_mode)
     fixtures = discover_reference_fixtures(validation_dir)
     results = []
     for fixture in fixtures:

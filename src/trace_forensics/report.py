@@ -590,7 +590,10 @@ def sign_manifest(
 
 
 def export_case_report(case_dir: Path, output_root: Path, examiner_id: str, examiner_notes: str = "") -> Path:
-    source = read_json(case_dir / "source_transcript.json")
+    source_path = case_dir / "source_transcript.json"
+    if not source_path.exists():
+        raise FileNotFoundError(f"Case directory {case_dir} is missing source_transcript.json. Ingest the case before report export.")
+    source = read_json(source_path)
     classified_path = case_dir / "classified_transcript.json"
     if not classified_path.exists():
         raise FileNotFoundError(

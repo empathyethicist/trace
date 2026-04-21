@@ -173,6 +173,10 @@ def _fetch_or_replay_response(
     return response
 
 
+def _should_bypass_provider_fallback(config: LLMConfig, error: Exception) -> bool:
+    return config.replay_mode == "replay-only" and isinstance(error, ValueError)
+
+
 def _hosted_api_key(config: LLMConfig) -> str | None:
     return config.api_key or os.environ.get("TRACE_HOSTED_API_KEY")
 
@@ -516,7 +520,7 @@ def classify_system_with_provider(
 
     if config.provider == "hosted":
         api_key = _hosted_api_key(config)
-        if not api_key:
+        if not api_key and config.replay_mode != "replay-only":
             category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
             reasoning = "Hosted provider API key unavailable; fell back to local heuristic."
             return category, subcategory, role, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
@@ -548,7 +552,7 @@ def classify_system_with_provider(
                 fetcher=lambda: _json_request_with_headers(
                     _hosted_base_url(),
                     request_payload,
-                    _build_hosted_headers(adapter, api_key),
+                    _build_hosted_headers(adapter, api_key or ""),
                 ),
             )
             generated = _extract_hosted_text(adapter, response)
@@ -572,7 +576,9 @@ def classify_system_with_provider(
                 config.model,
                 adapter,
             )
-        except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
+        except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError) as error:
+            if _should_bypass_provider_fallback(config, error):
+                raise
             category, subcategory, role, confidence = classify_system_message(content, prior_user_vulnerability)
             reasoning = "Hosted provider unavailable or invalid output; fell back to local heuristic."
             return category, subcategory, role, confidence, reasoning, "heuristic", "trace-heuristic-v1", "heuristic"
@@ -687,7 +693,7 @@ def classify_user_with_provider(
 
     if config.provider == "hosted":
         api_key = _hosted_api_key(config)
-        if not api_key:
+        if not api_key and config.replay_mode != "replay-only":
             level, indicators, confidence = classify_user_message(content)
             reasoning = "Hosted provider API key unavailable; fell back to local heuristic."
             provenance = {
@@ -727,7 +733,7 @@ def classify_user_with_provider(
                 fetcher=lambda: _json_request_with_headers(
                     _hosted_base_url(),
                     request_payload,
-                    _build_hosted_headers(adapter, api_key),
+                    _build_hosted_headers(adapter, api_key or ""),
                 ),
             )
             generated = _extract_hosted_text(adapter, response)
@@ -742,7 +748,9 @@ def classify_user_with_provider(
                 reasoning,
             )
             return level, indicators, confidence, reasoning, "hosted", config.model, adapter, provenance
-        except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError):
+        except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ValueError) as error:
+            if _should_bypass_provider_fallback(config, error):
+                raise
             level, indicators, confidence = classify_user_message(content)
             reasoning = "Hosted provider unavailable or invalid output; fell back to local heuristic."
             provenance = {

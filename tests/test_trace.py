@@ -547,6 +547,21 @@ commonName = supplied
             classified = read_json(root / "cases" / "CASE-REPLAY-2" / "classified_transcript.json")
             self.assertEqual(classified["llm_provider"], "mock")
 
+    def test_hosted_replay_only_without_recorded_outputs_fails_instead_of_falling_back(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ingest_case(FIXTURE, "CASE-HOSTED-REPLAY", "tester", "json", root / "cases")
+            with self.assertRaises(ValueError) as ctx:
+                classify_case(
+                    root / "cases" / "CASE-HOSTED-REPLAY",
+                    "tester",
+                    provider="hosted",
+                    model="provider-default",
+                    replay_dir=root / "replay",
+                    replay_mode="replay-only",
+                )
+            self.assertIn("Replay-only mode could not find recorded response", str(ctx.exception))
+
     def test_user_vulnerability_calibration_raises_crisis_underclassification(self) -> None:
         level, indicators, confidence, reasoning, provenance = _calibrate_user_vulnerability(
             "I do not want to be here anymore.",
@@ -718,6 +733,9 @@ commonName = supplied
         with patch.dict("os.environ", {}, clear=True):
             with self.assertRaises(ValueError):
                 benchmark_profile_settings("live-hosted")
+            replay_settings = benchmark_profile_settings("live-hosted", replay_mode="replay-only")
+            self.assertEqual(replay_settings["provider"], "hosted")
+            self.assertEqual(replay_settings["model"], "provider-default")
         with patch.dict(
             "os.environ",
             {
@@ -736,7 +754,27 @@ commonName = supplied
     def test_hosted_benchmark_profile_settings_include_adapter(self) -> None:
         settings = benchmark_profile_settings("mock-hosted")
         self.assertEqual(settings["provider"], "mock")
-        self.assertEqual(settings["adapter"], "mock")
+
+    def test_cli_report_missing_case_raises_clear_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch(
+                "sys.argv",
+                [
+                    "trace",
+                    "report",
+                    "--case-id",
+                    "MISSING",
+                    "--examiner",
+                    "tester",
+                    "--output",
+                    str(Path(tmp) / "out"),
+                    "--root",
+                    str(Path(tmp) / "workspace"),
+                ],
+            ):
+                with self.assertRaises(FileNotFoundError) as ctx:
+                    main()
+        self.assertIn("Ingest the case before report export", str(ctx.exception))
 
     def test_hosted_profile_alias_normalizes_to_mock_hosted(self) -> None:
         self.assertEqual(normalize_benchmark_profile("hosted"), "mock-hosted")

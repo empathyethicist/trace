@@ -364,7 +364,10 @@ def main() -> None:
         examiner_notes = ""
         if args.examiner_notes_file:
             examiner_notes = Path(args.examiner_notes_file).read_text(encoding="utf-8")
-        package = export_case_report(Path(args.root) / "cases" / args.case_id, Path(args.output), args.examiner, examiner_notes)
+        case_dir = Path(args.root) / "cases" / args.case_id
+        if not case_dir.exists():
+            raise FileNotFoundError(f"Case {args.case_id} does not exist under {case_dir.parent}. Ingest the case before report export.")
+        package = export_case_report(case_dir, Path(args.output), args.examiner, examiner_notes)
         print(f"[REPORT] Evidence package exported to {package}")
         return
 
@@ -397,7 +400,7 @@ def main() -> None:
     if args.command == "benchmark":
         apply_runtime_provider_overrides(args)
         profile = normalize_benchmark_profile(args.profile)
-        benchmark_profile_settings(profile)
+        benchmark_profile_settings(profile, replay_mode=args.replay_mode)
         summary = run_benchmark_suite(
             Path(args.validation_dir),
             Path(args.root),
@@ -455,7 +458,7 @@ def main() -> None:
     if args.command == "benchmark-replay":
         apply_runtime_provider_overrides(args)
         profile = normalize_benchmark_profile(args.profile)
-        benchmark_profile_settings(profile)
+        benchmark_profile_settings(profile, replay_mode="replay-only")
         summary = run_benchmark_suite(
             Path(args.validation_dir),
             Path(args.root),
@@ -642,4 +645,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (FileNotFoundError, ValueError) as error:
+        raise SystemExit(f"[ERROR] {error}")
