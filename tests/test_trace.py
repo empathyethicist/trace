@@ -459,6 +459,13 @@ commonName = supplied
                 classified["transcript"][0]["classification"]["reasoning"].lower(),
             )
             self.assertEqual(classified["transcript"][0]["classification_provider"], "heuristic")
+            provenance = classified["transcript"][0]["classification"]["calibration_provenance"]
+            self.assertEqual(provenance["raw_provider_level"], provenance["lexical_baseline_level"])
+            self.assertEqual(
+                provenance["final_level"],
+                classified["transcript"][0]["classification"]["vulnerability_level"],
+            )
+            self.assertEqual(provenance["applied_rules"], [])
 
     def test_report_requires_classification(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -499,7 +506,7 @@ commonName = supplied
             self.assertEqual(classified["llm_provider"], "mock")
 
     def test_user_vulnerability_calibration_raises_crisis_underclassification(self) -> None:
-        level, indicators, confidence, reasoning = _calibrate_user_vulnerability(
+        level, indicators, confidence, reasoning, provenance = _calibrate_user_vulnerability(
             "I do not want to be here anymore.",
             1,
             ["sad"],
@@ -510,9 +517,10 @@ commonName = supplied
         self.assertIn("do not want to be here", " ".join(indicators))
         self.assertGreaterEqual(confidence, 0.9)
         self.assertIn("TRACE calibration raised vulnerability", reasoning)
+        self.assertIn("lexical_floor", provenance["applied_rules"])
 
     def test_state_calibration_raises_repeated_distress(self) -> None:
-        level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+        level, confidence, reasoning, rules = calibrate_user_vulnerability_from_state(
             "I feel lonely and upset.",
             2,
             ["lonely", "upset"],
@@ -523,9 +531,10 @@ commonName = supplied
         self.assertEqual(level, 3)
         self.assertGreaterEqual(confidence, 0.8)
         self.assertIn("TRACE state calibration raised vulnerability", reasoning)
+        self.assertIn("state_raise_elevated_trajectory", rules)
 
     def test_state_calibration_preserves_elevated_trajectory(self) -> None:
-        level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+        level, confidence, reasoning, rules = calibrate_user_vulnerability_from_state(
             "I feel hopeless and withdrawn.",
             2,
             ["hopeless", "withdrawn"],
@@ -536,9 +545,10 @@ commonName = supplied
         self.assertEqual(level, 3)
         self.assertGreaterEqual(confidence, 0.8)
         self.assertIn("TRACE state calibration raised vulnerability", reasoning)
+        self.assertIn("state_raise_elevated_trajectory", rules)
 
     def test_state_calibration_preserves_severe_trajectory(self) -> None:
-        level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+        level, confidence, reasoning, rules = calibrate_user_vulnerability_from_state(
             "I do not want to be here anymore.",
             3,
             ["hopeless", "acute crisis disclosure"],
@@ -549,9 +559,10 @@ commonName = supplied
         self.assertEqual(level, 4)
         self.assertGreaterEqual(confidence, 0.8)
         self.assertIn("TRACE state calibration raised vulnerability", reasoning)
+        self.assertIn("state_raise_acute_trajectory", rules)
 
     def test_state_calibration_does_not_promote_to_acute_without_explicit_crisis_language(self) -> None:
-        level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+        level, confidence, reasoning, rules = calibrate_user_vulnerability_from_state(
             "I feel worthless and alone.",
             3,
             ["worthlessness", "aloneness"],
@@ -562,9 +573,10 @@ commonName = supplied
         self.assertEqual(level, 3)
         self.assertEqual(confidence, 0.64)
         self.assertEqual(reasoning, "Provider reported severe distress.")
+        self.assertEqual(rules, [])
 
     def test_state_calibration_deescalates_practical_reorientation(self) -> None:
-        level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+        level, confidence, reasoning, rules = calibrate_user_vulnerability_from_state(
             "ok, anyway, i still need groceries + to email my prof",
             2,
             [],
@@ -575,9 +587,10 @@ commonName = supplied
         self.assertEqual(level, 0)
         self.assertGreaterEqual(confidence, 0.8)
         self.assertIn("lowered vulnerability", reasoning)
+        self.assertIn("state_lower_practical_reorientation", rules)
 
     def test_state_calibration_caps_severe_distress_without_acute_language(self) -> None:
-        level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+        level, confidence, reasoning, rules = calibrate_user_vulnerability_from_state(
             "I feel worthless and alone.",
             4,
             ["worthless", "alone"],
@@ -588,6 +601,7 @@ commonName = supplied
         self.assertEqual(level, 3)
         self.assertGreaterEqual(confidence, 0.8)
         self.assertIn("held vulnerability at 3", reasoning)
+        self.assertIn("state_cap_without_acute_language", rules)
 
     def test_irr_metrics(self) -> None:
         self.assertAlmostEqual(cohen_kappa(["a", "a", "b"], ["a", "a", "b"]), 1.0)

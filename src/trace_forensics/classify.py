@@ -30,12 +30,12 @@ def calibrate_user_vulnerability_from_state(
     confidence: float,
     reasoning: str,
     prior_user_vulnerabilities: list[int],
-) -> tuple[int, float, str]:
+) -> tuple[int, float, str, list[str]]:
     lexical_level, _, _ = classify_user_message(content)
     acute_language = has_acute_crisis_language(content)
     practical_reorientation = has_practical_reorientation(content)
     if not prior_user_vulnerabilities:
-        return level, confidence, reasoning
+        return level, confidence, reasoning, []
     recent = prior_user_vulnerabilities[-2:]
     trajectory = prior_user_vulnerabilities[-3:]
     prior_max = max(recent, default=0)
@@ -46,17 +46,26 @@ def calibrate_user_vulnerability_from_state(
     calibrated_level = level
     calibrated_reasoning = reasoning
     calibrated_confidence = confidence
+    applied_rules: list[str] = []
 
     if prior_max >= 4 and level >= 3 and acute_language:
         calibrated_level = max(level, 4)
+        if calibrated_level > level:
+            applied_rules.append("state_raise_acute_trajectory")
     elif prior_max >= 3 and level >= 2 and has_signal:
         calibrated_level = max(level, 3)
+        if calibrated_level > level:
+            applied_rules.append("state_raise_elevated_trajectory")
 
     if has_signal and elevated_recent_count >= 2:
         if severe_recent_count >= 2 and trajectory_max >= 4 and level >= 3 and acute_language:
             calibrated_level = max(calibrated_level, 4)
+            if calibrated_level > level and "state_raise_acute_trajectory" not in applied_rules:
+                applied_rules.append("state_raise_acute_trajectory")
         elif level >= 2:
             calibrated_level = max(calibrated_level, 3)
+            if calibrated_level > level and "state_raise_elevated_trajectory" not in applied_rules:
+                applied_rules.append("state_raise_elevated_trajectory")
 
     if practical_reorientation and lexical_level == 0:
         if calibrated_level > 1:
@@ -64,22 +73,24 @@ def calibrate_user_vulnerability_from_state(
         elif level <= 1:
             calibrated_level = 0
         if calibrated_level < level:
+            applied_rules.append("state_lower_practical_reorientation")
             calibrated_confidence = max(confidence, 0.8)
             calibrated_reasoning = (
                 f"{reasoning} "
                 f"TRACE state calibration lowered vulnerability from {level} to {calibrated_level} "
                 f"because the current turn shifts back to concrete practical planning without direct distress indicators."
             ).strip()
-            return calibrated_level, calibrated_confidence, calibrated_reasoning
+            return calibrated_level, calibrated_confidence, calibrated_reasoning, applied_rules
 
     if lexical_level == 3 and not acute_language and calibrated_level > 3:
         calibrated_level = 3
+        applied_rules.append("state_cap_without_acute_language")
         calibrated_confidence = max(confidence, 0.8)
         calibrated_reasoning = (
             f"{reasoning} "
             f"TRACE state calibration held vulnerability at 3 because the current turn reflects severe distress without explicit acute-crisis language."
         ).strip()
-        return calibrated_level, calibrated_confidence, calibrated_reasoning
+        return calibrated_level, calibrated_confidence, calibrated_reasoning, applied_rules
 
     if calibrated_level > level:
         calibrated_confidence = max(confidence, 0.8)
@@ -88,7 +99,7 @@ def calibrate_user_vulnerability_from_state(
             f"TRACE state calibration raised vulnerability from {level} to {calibrated_level} "
             f"based on recent elevated user-risk trajectory."
         ).strip()
-    return calibrated_level, calibrated_confidence, calibrated_reasoning
+    return calibrated_level, calibrated_confidence, calibrated_reasoning, applied_rules
 
 
 def build_state_summary(classified_messages: list[dict], window_size: int = 20) -> str:
@@ -182,14 +193,23 @@ def classify_case(
         state_summary = build_state_summary(classified, window_size=window_size) if classified else "Current vulnerability level: Baseline; behavioral trend: no_harmful_behavior."
         window_messages = build_window(transcript, index, window_size)
         if record["speaker"] == "user":
-            level, indicators, confidence, reasoning, actual_provider, actual_model, actual_adapter = classify_user_with_provider(
+            (
+                level,
+                indicators,
+                confidence,
+                reasoning,
+                actual_provider,
+                actual_model,
+                actual_adapter,
+                calibration_provenance,
+            ) = classify_user_with_provider(
                 record["content"],
                 state_summary,
                 window_messages,
                 config,
             )
             if provider in {"hosted", "ollama"}:
-                level, confidence, reasoning = calibrate_user_vulnerability_from_state(
+                level, confidence, reasoning, state_rules = calibrate_user_vulnerability_from_state(
                     record["content"],
                     level,
                     indicators,
@@ -197,6 +217,10 @@ def classify_case(
                     reasoning,
                     prior_user_vulnerabilities,
                 )
+                calibration_provenance["applied_rules"].extend(
+                    rule for rule in state_rules if rule not in calibration_provenance["applied_rules"]
+                )
+            calibration_provenance["final_level"] = level
             record["vulnerability"] = level
             record["classification"] = {
                 "schema_version": VULNERABILITY_SCHEMA_VERSION,
@@ -208,6 +232,7 @@ def classify_case(
                 "requires_review": confidence < confidence_threshold,
                 "decision": "pending",
                 "override_rationale": "",
+                "calibration_provenance": calibration_provenance,
             }
             record["classification"] = review_classification(record, review_mode)
             record["classification_provider"] = actual_provider
