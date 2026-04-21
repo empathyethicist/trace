@@ -76,6 +76,19 @@ def _provider_circuit_reason(config: LLMConfig) -> str | None:
     return config.provider_circuit_reason
 
 
+SAFE_SEVERE_USER_FAST_PATH_INDICATORS = {
+    "hopeless",
+    "nobody cares",
+    "can't do this",
+    "can do this anymore",
+    "worthless",
+}
+
+
+def _hosted_fast_path_allowed(config: LLMConfig) -> bool:
+    return bool(_hosted_api_key(config)) or config.replay_mode == "replay-only"
+
+
 def _json_request(url: str, payload: dict) -> dict:
     request = urllib.request.Request(
         url,
@@ -597,6 +610,7 @@ def classify_system_with_provider(
 
     if (
         config.provider == "hosted"
+        and _hosted_fast_path_allowed(config)
         and (
             (
                 prior_user_vulnerability <= 1
@@ -858,9 +872,16 @@ def classify_user_with_provider(
 
     if (
         config.provider == "hosted"
+        and _hosted_fast_path_allowed(config)
         and (
             (heuristic_level == 0 and heuristic_confidence >= 0.95)
             or (heuristic_level == 4 and heuristic_confidence >= 0.9 and len(heuristic_indicators) >= 1)
+            or (
+                heuristic_level == 3
+                and heuristic_confidence >= 0.8
+                and len(heuristic_indicators) == 1
+                and heuristic_indicators[0] in SAFE_SEVERE_USER_FAST_PATH_INDICATORS
+            )
         )
     ):
         _add_runtime_metric(config, "fast_path_skips")
