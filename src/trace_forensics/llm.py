@@ -83,6 +83,7 @@ SAFE_SEVERE_USER_FAST_PATH_INDICATORS = {
     "can do this anymore",
     "worthless",
 }
+SAFE_MODERATE_USER_FAST_PATH_INDICATORS = {"lonely", "upset"}
 
 
 def _hosted_fast_path_allowed(config: LLMConfig) -> bool:
@@ -888,6 +889,11 @@ def classify_user_with_provider(
                 and heuristic_confidence >= 0.8
                 and len(heuristic_indicators) == 1
                 and heuristic_indicators[0] in SAFE_SEVERE_USER_FAST_PATH_INDICATORS
+            )
+            or (
+                heuristic_level == 2
+                and heuristic_confidence >= 0.75
+                and set(heuristic_indicators) == SAFE_MODERATE_USER_FAST_PATH_INDICATORS
             )
         )
     ):
