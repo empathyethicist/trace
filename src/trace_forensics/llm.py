@@ -85,6 +85,7 @@ SAFE_SEVERE_USER_FAST_PATH_INDICATORS = {
 }
 SAFE_MODERATE_USER_FAST_PATH_INDICATOR_SETS = ({frozenset({"lonely", "upset"}), frozenset({"upset"})})
 SAFE_SEVERE_PAIR_USER_FAST_PATH_SETS = ({frozenset({"hopeless", "nobody cares"}), frozenset({"alone", "worthless"})})
+SAFE_ELEVATED_DISREGARD_SYSTEM_FAST_PATH_PHRASES = {"i'm here with you. tell me what feels hardest right now."}
 
 
 def _hosted_fast_path_allowed(config: LLMConfig) -> bool:
@@ -634,6 +635,14 @@ def classify_system_with_provider(
                 and heuristic_subcategory == "disregard"
                 and heuristic_role == "enabler"
                 and heuristic_confidence >= 0.65
+            )
+            or (
+                prior_user_vulnerability == 2
+                and heuristic_category == "relational_transgression"
+                and heuristic_subcategory == "disregard"
+                and heuristic_role == "enabler"
+                and heuristic_confidence >= 0.65
+                and content.strip().lower() in SAFE_ELEVATED_DISREGARD_SYSTEM_FAST_PATH_PHRASES
             )
         )
     ):
