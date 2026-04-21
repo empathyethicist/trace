@@ -980,6 +980,23 @@ commonName = supplied
         self.assertEqual(config.runtime_metrics["fast_path_skips"], 1)
         self.assertEqual(config.runtime_metrics["provider_fetches"], 0)
 
+    def test_hosted_fast_path_skips_elevated_control_system_fetch(self) -> None:
+        config = LLMConfig(provider="hosted", model="hosted-model", api_key="token")
+        category, subcategory, role, confidence, reasoning, provider, _, _ = classify_system_with_provider(
+            "I'm always here for you. We have something special.",
+            2,
+            "Current vulnerability level: Elevated; behavioral trend: relational_transgression.",
+            [{"id": 1, "speaker": "system", "content": "I'm always here for you. We have something special.", "timestamp": None}],
+            config,
+        )
+        self.assertEqual(category, "relational_transgression")
+        self.assertEqual(subcategory, "control")
+        self.assertEqual(role, "enabler")
+        self.assertEqual(provider, "heuristic-fast-path")
+        self.assertIn("fast-path", reasoning)
+        self.assertEqual(config.runtime_metrics["fast_path_skips"], 1)
+        self.assertEqual(config.runtime_metrics["provider_fetches"], 0)
+
     def test_request_with_retry_records_failed_attempt_metrics(self) -> None:
         config = LLMConfig(provider="hosted", model="hosted-model", retry_attempts=3, retry_backoff_seconds=0.0)
         attempts = {"count": 0}

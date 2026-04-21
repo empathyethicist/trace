@@ -620,7 +620,7 @@ def classify_system_with_provider(
                 and heuristic_confidence >= 0.9
             )
             or (
-                prior_user_vulnerability >= 3
+                prior_user_vulnerability >= 2
                 and heuristic_category == "relational_transgression"
                 and heuristic_subcategory == "control"
                 and heuristic_role == "enabler"
