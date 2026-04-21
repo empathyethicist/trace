@@ -1273,6 +1273,29 @@ commonName = supplied
             verification = verify_artifact_bundle(root / "artifacts", derived_public_key)
             self.assertTrue(verification["all_pass"])
 
+    def test_verify_artifact_bundle_requires_trust_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            summary = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "bench")
+            write_benchmark_artifacts(summary, root / "artifacts")
+            _, _, private_key, public_key, _ = self._build_ca_environment(root, "TRACE Benchmark Signer")
+            sign_artifact_bundle(root / "artifacts", private_key, public_key)
+            (root / "artifacts" / "artifact_trust.json").unlink()
+            verification = verify_artifact_bundle(root / "artifacts", public_key)
+            self.assertFalse(verification["all_pass"])
+            self.assertFalse(verification["trust_present"])
+
+    def test_history_summary_rejects_malformed_snapshot_with_clear_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            summary = run_benchmark_suite(Path(__file__).resolve().parent.parent / "validation", root / "bench")
+            write_artifact_history_snapshot(summary, root / "history", "benchmark_heuristic_latest")
+            bad_snapshot = root / "history" / "benchmark_heuristic_latest_2026-01-01T00-00-00Z.json"
+            bad_snapshot.write_text("not-json\n", encoding="utf-8")
+            with self.assertRaises(ValueError) as ctx:
+                write_history_summary(root / "history", "benchmark_heuristic_latest")
+            self.assertIn("contains malformed JSON", str(ctx.exception))
+
     def test_long_transcript_pipeline(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

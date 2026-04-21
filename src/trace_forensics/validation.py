@@ -4,6 +4,7 @@ from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import field
 import hashlib
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -462,7 +463,10 @@ def collect_history_snapshots(history_dir: Path, prefix: str) -> list[dict]:
             continue
         if path.name.endswith("_history_summary.json") or path.name.endswith("_trend_summary.json"):
             continue
-        snapshots.append(read_json(path))
+        try:
+            snapshots.append(read_json(path))
+        except json.JSONDecodeError as error:
+            raise ValueError(f"History snapshot {path} contains malformed JSON.") from error
     return snapshots
 
 
@@ -709,7 +713,7 @@ def verify_artifact_bundle(output_dir: Path, public_key_path: Path) -> dict:
         "file_hashes_match": False,
         "trust_public_key_match": False,
     }
-    if not manifest_path.exists() or not signature_path.exists():
+    if not manifest_path.exists() or not signature_path.exists() or not trust_path.exists():
         result["all_pass"] = False
         return result
     completed = subprocess.run(
@@ -726,10 +730,9 @@ def verify_artifact_bundle(output_dir: Path, public_key_path: Path) -> dict:
         (output_dir / item["path"]).exists() and hash_file(output_dir / item["path"]) == item["sha256"]
         for item in manifest.get("files", [])
     )
-    if trust_path.exists():
-        trust = read_json(trust_path)
-        result["trust_public_key_match"] = trust.get("public_key_sha256") == hash_file(public_key_path)
-    result["all_pass"] = result["signature_valid"] and result["file_hashes_match"] and (not result["trust_present"] or result["trust_public_key_match"])
+    trust = read_json(trust_path)
+    result["trust_public_key_match"] = trust.get("public_key_sha256") == hash_file(public_key_path)
+    result["all_pass"] = result["signature_valid"] and result["file_hashes_match"] and result["trust_present"] and result["trust_public_key_match"]
     return result
 
 
